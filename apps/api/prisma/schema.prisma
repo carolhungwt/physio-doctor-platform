@@ -1,0 +1,547 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===============================
+// USER MANAGEMENT
+// ===============================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?  @unique
+  hashedPassword String
+  role      UserRole
+  isVerified Boolean @default(false)
+  isActive   Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Role-specific profiles
+  doctorProfile  DoctorProfile?
+  physioProfile  PhysioProfile?
+  patientProfile PatientProfile?
+
+  // Activities
+  referralsIssued       Referral[] @relation("DoctorReferrals")
+  referralsReceived     Referral[] @relation("PatientReferrals")
+  appointmentsAsDoc     Appointment[] @relation("DoctorAppointments")
+  appointmentsAsPhysio  Appointment[] @relation("PhysioAppointments")
+  appointmentsAsPatient Appointment[] @relation("PatientAppointments")
+  
+  // Services (for physios)
+  services         Service[]
+  availabilitySlots AvailabilitySlot[]
+  
+  // Financial
+  paymentsReceived Payment[] @relation("PaymentReceiver")
+  paymentsMade     Payment[] @relation("PaymentPayer")
+  payouts          Payout[]
+  
+  // Documents & Communication
+  documents    Document[]
+  notifications Notification[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  PHYSIO
+  ADMIN
+}
+
+// ===============================
+// PROFILE MODELS
+// ===============================
+
+model DoctorProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  licenseNo    String  @unique
+  specialties  String[] // e.g., ["Orthopedics", "Sports Medicine"]
+  clinicName   String?
+  clinicAddress String?
+  
+  // Consultation settings
+  consultationFee Decimal @default(500.00) // HKD
+  isAvailableForConsult Boolean @default(true)
+  
+  // Banking details for payouts
+  bankName     String?
+  accountNumber String?
+  accountName  String?
+  
+  // Verification
+  isLicenseVerified Boolean @default(false)
+  licenseDocument   String? // URL to license document
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("doctor_profiles")
+}
+
+model PhysioProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  licenseNo    String  @unique
+  specialties  String[] // e.g., ["Sports Rehab", "Manual Therapy"]
+  
+  // Service settings
+  offersClinicService Boolean @default(true)
+  offersHomeService   Boolean @default(false)
+  clinicAddress       String?
+  serviceRadius       Int?    // km for home service
+  
+  // Banking details
+  bankName     String?
+  accountNumber String?
+  accountName  String?
+  
+  // Verification
+  isLicenseVerified Boolean @default(false)
+  licenseDocument   String? // URL to license document
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("physio_profiles")
+}
+
+model PatientProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  dateOfBirth  DateTime?
+  gender       Gender?
+  address      String?
+  
+  // Emergency contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  
+  // Medical history
+  medicalHistory String? // JSON or text field
+  allergies      String?
+  currentMedications String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("patient_profiles")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+// ===============================
+// SERVICES & AVAILABILITY
+// ===============================
+
+model Service {
+  id          String  @id @default(cuid())
+  providerId  String
+  provider    User    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  
+  name        String  // e.g., "Sports Injury Assessment"
+  description String?
+  duration    Int     // minutes
+  price       Decimal // HKD
+  serviceType ServiceType
+  
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Related appointments
+  appointments Appointment[]
+
+  @@map("services")
+}
+
+enum ServiceType {
+  CLINIC
+  HOME_VISIT
+}
+
+model AvailabilitySlot {
+  id          String  @id @default(cuid())
+  providerId  String
+  provider    User    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek   Int     // 0 = Sunday, 1 = Monday, etc.
+  startTime   String  // HH:MM format
+  endTime     String  // HH:MM format
+  serviceType ServiceType
+  
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("availability_slots")
+}
+
+// ===============================
+// REFERRALS
+// ===============================
+
+model Referral {
+  id          String    @id @default(cuid())
+  patientId   String
+  patient     User      @relation("PatientReferrals", fields: [patientId], references: [id])
+  doctorId    String
+  doctor      User      @relation("DoctorReferrals", fields: [doctorId], references: [id])
+  
+  // Referral details
+  diagnosis   String
+  sessions    Int       // Number of recommended sessions
+  urgency     Urgency   @default(ROUTINE)
+  serviceType ServiceType?
+  notes       String?
+  
+  // Validity
+  issuedAt    DateTime  @default(now())
+  expiryDate  DateTime  // When referral expires
+  
+  // Document
+  pdfUrl      String?   // Generated referral PDF
+  documentHash String?  // For verification
+  qrCode      String?   // QR code for verification
+  
+  // Status
+  status      ReferralStatus @default(ACTIVE)
+  sessionsUsed Int @default(0)
+  
+  // Related records
+  appointments Appointment[]
+  documents    Document[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("referrals")
+}
+
+enum Urgency {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+enum ReferralStatus {
+  ACTIVE
+  EXPIRED
+  COMPLETED
+  REVOKED
+}
+
+// ===============================
+// APPOINTMENTS & BOOKINGS
+// ===============================
+
+model Appointment {
+  id          String  @id @default(cuid())
+  
+  // Participants
+  patientId   String
+  patient     User    @relation("PatientAppointments", fields: [patientId], references: [id])
+  physioId    String
+  physio      User    @relation("PhysioAppointments", fields: [physioId], references: [id])
+  doctorId    String? // Referring doctor
+  doctor      User?   @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  
+  // Booking details
+  referralId  String?
+  referral    Referral? @relation(fields: [referralId], references: [id])
+  serviceId   String
+  service     Service @relation(fields: [serviceId], references: [id])
+  
+  // Timing
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  actualStart    DateTime?
+  actualEnd      DateTime?
+  
+  // Location & Type
+  serviceType ServiceType
+  location    String? // Address for home visits
+  
+  // Status & Attendance
+  status      AppointmentStatus @default(SCHEDULED)
+  checkInTime DateTime?
+  checkOutTime DateTime?
+  noShowGracePeriod Int @default(15) // minutes
+  
+  // Notes
+  physioNotes String?
+  patientNotes String?
+  
+  // Financial
+  payments Payment[]
+  feeSplits FeeSplit[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+  RESCHEDULED
+}
+
+// ===============================
+// PAYMENTS & FINANCIAL
+// ===============================
+
+model Payment {
+  id            String  @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  
+  // Payment details
+  amount        Decimal
+  currency      String @default("HKD")
+  paymentMethod PaymentMethod
+  
+  // Participants
+  payerId       String
+  payer         User   @relation("PaymentPayer", fields: [payerId], references: [id])
+  receiverId    String
+  receiver      User   @relation("PaymentReceiver", fields: [receiverId], references: [id])
+  
+  // External payment data
+  stripePaymentIntentId String?
+  stripeChargeId        String?
+  
+  // Status
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+  refundedAt    DateTime?
+  refundAmount  Decimal?
+  
+  // Fee breakdown
+  feeSplits     FeeSplit[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  STRIPE_CARD
+  FPS
+  PAYME
+  ALIPAY_HK
+  WECHAT_PAY
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model FeeSplit {
+  id            String  @id @default(cuid())
+  paymentId     String
+  payment       Payment @relation(fields: [paymentId], references: [id])
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  
+  // Fee breakdown
+  totalAmount     Decimal
+  referralFee     Decimal // 20% to doctor
+  physioFee       Decimal // 80% to physio
+  platformFee     Decimal @default(0) // For future use
+  
+  // Recipients
+  doctorId        String?
+  physioId        String
+  
+  createdAt DateTime @default(now())
+
+  @@map("fee_splits")
+}
+
+model Payout {
+  id          String  @id @default(cuid())
+  providerId  String
+  provider    User    @relation(fields: [providerId], references: [id])
+  
+  amount      Decimal
+  currency    String @default("HKD")
+  type        PayoutType
+  
+  // External payout data
+  stripeTransferId String?
+  
+  status      PayoutStatus @default(PENDING)
+  processedAt DateTime?
+  
+  // Metadata
+  periodStart DateTime
+  periodEnd   DateTime
+  description String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payouts")
+}
+
+enum PayoutType {
+  REFERRAL_FEE
+  SERVICE_FEE
+  REFUND
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ===============================
+// DOCUMENTS & COMMUNICATION
+// ===============================
+
+model Document {
+  id          String  @id @default(cuid())
+  ownerId     String
+  owner       User    @relation(fields: [ownerId], references: [id])
+  
+  type        DocumentType
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  
+  // Verification
+  hash        String? // For document integrity
+  isVerified  Boolean @default(false)
+  
+  // Associations
+  referralId  String?
+  referral    Referral? @relation(fields: [referralId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("documents")
+}
+
+enum DocumentType {
+  REFERRAL
+  CONSENT_FORM
+  MEDICAL_REPORT
+  EXERCISE_PLAN
+  INVOICE
+  LICENSE
+  IDENTIFICATION
+}
+
+model Notification {
+  id          String  @id @default(cuid())
+  userId      String
+  user        User    @relation(fields: [userId], references: [id])
+  
+  type        NotificationType
+  channel     NotificationChannel
+  title       String
+  message     String
+  data        Json?   // Additional data payload
+  
+  status      NotificationStatus @default(PENDING)
+  sentAt      DateTime?
+  readAt      DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CONFIRMATION
+  PAYMENT_CONFIRMATION
+  REFERRAL_ISSUED
+  NO_SHOW_ALERT
+  FOLLOW_UP_REMINDER
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+// ===============================
+// AUDIT & COMPLIANCE
+// ===============================
+
+model AuditLog {
+  id          String  @id @default(cuid())
+  actorId     String?
+  actor       User?   @relation(fields: [actorId], references: [id])
+  
+  action      String  // e.g., "CREATE_REFERRAL", "UPDATE_APPOINTMENT"
+  entityType  String  // e.g., "Referral", "Appointment"
+  entityId    String?
+  
+  // Change tracking
+  beforeData  Json?
+  afterData   Json?
+  
+  // Context
+  ipAddress   String?
+  userAgent   String?
+  sessionId   String?
+  
+  timestamp DateTime @default(now())
+
+  @@map("audit_logs")
+}
