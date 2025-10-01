@@ -2,35 +2,39 @@ import { IsEmail, IsString, MinLength, IsEnum, IsOptional } from 'class-validato
 import { UserRole } from '@prisma/client';
 
 export class RegisterDto {
-    @IsEmail()
-    email: string;
+  @IsEmail()
+  email: string;
 
-    @IsString()
-    @MinLength(8)
-    password: string;
+  @IsString()
+  @MinLength(3)
+  username: string;
 
-    @IsOptional()
-    @IsString()
-    phone?: string;
+  @IsString()
+  @MinLength(8)
+  password: string;
 
-    @IsEnum(UserRole)
-    role: UserRole;
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsEnum(UserRole)
+  role: UserRole;
 }
 
 export class LoginDto {
-    @IsEmail()
-    email: string;
+  @IsString()
+  identifier: string;
 
-    @IsString()
-    password: string;
+  @IsString()
+  password: string;
 }
 
 export class AuthResponseDto {
-    access_token: string;
-    user: {
-        id: string;
-        email: string;
-        role: UserRole;
-        isVerified: boolean;
-    };
+  access_token: string;
+  user: {
+    id: string;
+    email: string;
+    role: UserRole;
+    isVerified: boolean;
+  };
 }
