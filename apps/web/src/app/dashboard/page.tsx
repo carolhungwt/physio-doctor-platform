@@ -260,51 +260,165 @@ export default function DashboardPage() {
 
             {/* Doctor Dashboard */}
             {user?.role === 'DOCTOR' && stats && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Pending Referrals</CardTitle>
-                            <Clock className="h-4 w-4 text-gray-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.doctor.pendingReferrals}</div>
-                            <p className="text-xs text-gray-500 mt-1">Awaiting action</p>
-                        </CardContent>
-                    </Card>
+                <>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Pending Referrals</CardTitle>
+                                <Clock className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.doctor.pendingReferrals}</div>
+                                <p className="text-xs text-gray-500 mt-1">Awaiting action</p>
+                            </CardContent>
+                        </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
-                            <FileText className="h-4 w-4 text-gray-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.doctor.totalReferrals}</div>
-                            <p className="text-xs text-gray-500 mt-1">All time</p>
-                        </CardContent>
-                    </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
+                                <FileText className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.doctor.totalReferrals}</div>
+                                <p className="text-xs text-gray-500 mt-1">All time</p>
+                            </CardContent>
+                        </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Monthly Earnings</CardTitle>
-                            <DollarSign className="h-4 w-4 text-gray-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">HK${stats.doctor.monthlyEarnings}</div>
-                            <p className="text-xs text-gray-500 mt-1">Referral fees (20%)</p>
-                        </CardContent>
-                    </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Monthly Earnings</CardTitle>
+                                <DollarSign className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">HK${stats.doctor.monthlyEarnings}</div>
+                                <p className="text-xs text-gray-500 mt-1">Referral fees (20%)</p>
+                            </CardContent>
+                        </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Active Patients</CardTitle>
-                            <Users className="h-4 w-4 text-gray-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.doctor.patients}</div>
-                            <p className="text-xs text-gray-500 mt-1">Under your care</p>
-                        </CardContent>
-                    </Card>
-                </div>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium">Active Patients</CardTitle>
+                                <Users className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.doctor.patients}</div>
+                                <p className="text-xs text-gray-500 mt-1">Under your care</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Upcoming Appointments */}
+                    <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Calendar className="h-5 w-5" />
+                                    Upcoming Appointments
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {/* Mock upcoming appointments - replace with real data */}
+                                    <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50">
+                                        <div className="flex-shrink-0 text-center">
+                                            <div className="text-sm font-semibold text-blue-600">OCT</div>
+                                            <div className="text-2xl font-bold">02</div>
+                                            <div className="text-xs text-gray-500">Wed</div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm">Follow-up Consultation</p>
+                                            <p className="text-sm text-gray-600">John Smith - Sports Injury</p>
+                                            <p className="text-xs text-gray-500 mt-1">10:00 AM - 10:30 AM</p>
+                                        </div>
+                                        <CheckCircle className="h-5 w-5 text-green-500" />
+                                    </div>
+
+                                    <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50">
+                                        <div className="flex-shrink-0 text-center">
+                                            <div className="text-sm font-semibold text-blue-600">OCT</div>
+                                            <div className="text-2xl font-bold">02</div>
+                                            <div className="text-xs text-gray-500">Wed</div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm">Initial Consultation</p>
+                                            <p className="text-sm text-gray-600">Jane Doe - Back Pain</p>
+                                            <p className="text-xs text-gray-500 mt-1">2:00 PM - 2:45 PM</p>
+                                        </div>
+                                        <Clock className="h-5 w-5 text-yellow-500" />
+                                    </div>
+
+                                    <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50">
+                                        <div className="flex-shrink-0 text-center">
+                                            <div className="text-sm font-semibold text-blue-600">OCT</div>
+                                            <div className="text-2xl font-bold">03</div>
+                                            <div className="text-xs text-gray-500">Thu</div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-sm">Video Consultation</p>
+                                            <p className="text-sm text-gray-600">Mike Chen - Knee Assessment</p>
+                                            <p className="text-xs text-gray-500 mt-1">11:00 AM - 11:30 AM</p>
+                                        </div>
+                                        <Activity className="h-5 w-5 text-blue-500" />
+                                    </div>
+                                </div>
+
+                                <Button variant="outline" className="w-full mt-4">
+                                    View Full Calendar
+                                </Button>
+                            </CardContent>
+                        </Card>
+
+                        {/* Recent Activity */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Activity className="h-5 w-5" />
+                                    Recent Activity
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    <div className="flex items-start gap-3 pb-3 border-b">
+                                        <div className="flex-shrink-0 w-2 h-2 mt-2 bg-green-500 rounded-full"></div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium">Referral Completed</p>
+                                            <p className="text-sm text-gray-600">Patient: Sarah Lee → Physio: Dr. Wong</p>
+                                            <p className="text-xs text-gray-500 mt-1">2 hours ago</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3 pb-3 border-b">
+                                        <div className="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full"></div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium">New Referral Issued</p>
+                                            <p className="text-sm text-gray-600">Patient: Tom Wong - 8 sessions approved</p>
+                                            <p className="text-xs text-gray-500 mt-1">5 hours ago</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3 pb-3 border-b">
+                                        <div className="flex-shrink-0 w-2 h-2 mt-2 bg-yellow-500 rounded-full"></div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium">Payment Received</p>
+                                            <p className="text-sm text-gray-600">Referral fee: HK$160 (20%)</p>
+                                            <p className="text-xs text-gray-500 mt-1">Yesterday</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-2 h-2 mt-2 bg-purple-500 rounded-full"></div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium">Profile Updated</p>
+                                            <p className="text-sm text-gray-600">Consultation fee changed to HK$800</p>
+                                            <p className="text-xs text-gray-500 mt-1">2 days ago</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </>
             )}
 
             {/* Physio Dashboard */}

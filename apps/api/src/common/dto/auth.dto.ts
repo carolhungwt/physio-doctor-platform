@@ -42,6 +42,8 @@ export class AuthResponseDto {
   user: {
     id: string;
     email: string;
+    firstName?: string;  // ADD
+    lastName?: string;   // ADD
     role: UserRole;
     isVerified: boolean;
   };
