@@ -72,23 +72,8 @@ export function LoginForm() {
       
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
-      switch (response.user.role) {
-        case 'PATIENT':
-          router.push('/patient/dashboard');
-          break;
-        case 'DOCTOR':
-          router.push('/doctor/dashboard');
-          break;
-        case 'PHYSIO':
-          router.push('/physio/dashboard');
-          break;
-        case 'ADMIN':
-          router.push('/admin/dashboard');
-          break;
-        default:
-          router.push('/dashboard');
-      }
+
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

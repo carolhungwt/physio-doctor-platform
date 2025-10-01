@@ -54,7 +54,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const checkAuth = async () => {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             const userStr = localStorage.getItem('user');
 
             if (!token || !userStr) {

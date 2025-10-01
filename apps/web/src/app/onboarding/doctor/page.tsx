@@ -128,7 +128,7 @@ export default function DoctorOnboardingPage() {
         }
 
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('access_token');
             if (!token) {
                 router.push('/auth/login');
                 return;
