@@ -12,37 +12,41 @@ datasource db {
 // USER MANAGEMENT
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String?  @unique
-  phone     String?  @unique
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String?  @unique
+  phone          String?  @unique
   hashedPassword String
-  role      UserRole
-  isVerified Boolean @default(false)
-  isActive   Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role           UserRole
+  isVerified     Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // ADD THESE TWO LINES:
+  firstName String?
+  lastName  String?
 
   doctorProfile  DoctorProfile?
   physioProfile  PhysioProfile?
   patientProfile PatientProfile?
 
-  referralsIssued       Referral[] @relation("DoctorReferrals")
-  referralsReceived     Referral[] @relation("PatientReferrals")
+  referralsIssued       Referral[]    @relation("DoctorReferrals")
+  referralsReceived     Referral[]    @relation("PatientReferrals")
   appointmentsAsDoc     Appointment[] @relation("DoctorAppointments")
   appointmentsAsPhysio  Appointment[] @relation("PhysioAppointments")
   appointmentsAsPatient Appointment[] @relation("PatientAppointments")
-  
-  services         Service[]
+
+  services          Service[]
   availabilitySlots AvailabilitySlot[]
-  
+
   paymentsReceived Payment[] @relation("PaymentReceiver")
   paymentsMade     Payment[] @relation("PaymentPayer")
   payouts          Payout[]
-  
-  documents    Document[]
+
+  documents     Document[]
   notifications Notification[]
-  auditLogs    AuditLog[]
+  auditLogs     AuditLog[]
 
   @@map("users")
 }
@@ -55,51 +59,72 @@ enum UserRole {
 }
 
 model DoctorProfile {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  licenseNo    String  @unique
-  specialties  String[]
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // License & Verification
+  licenseNumber      String    @unique
+  licenseDocument    String? // URL to uploaded document
+  isVerified         Boolean   @default(false)
+  verificationStatus String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  verifiedAt         DateTime?
+
+  // Professional Info
+  specialties          String[]
+  yearsOfExperience    Int?
+  bio                  String?  @db.Text
+  hospitalAffiliations String[]
+
+  // Consultation Settings
+  consultationFee  Decimal @db.Decimal(10, 2)
+  consultationType String // VIDEO, IN_PERSON, BOTH
+  acceptsReferrals Boolean @default(true)
+
+  // Banking Info (for referral fees)
+  bankName          String?
+  bankAccountNumber String?
+  bankAccountName   String?
+
+  // Address
   clinicName   String?
-  clinicAddress String?
-  
-  consultationFee Decimal @default(500.00)
-  isAvailableForConsult Boolean @default(true)
-  
-  bankName     String?
-  accountNumber String?
-  accountName  String?
-  
-  isLicenseVerified Boolean @default(false)
-  licenseDocument   String?
-  
+  addressLine1 String?
+  addressLine2 String?
+  city         String
+  district     String?
+  country      String  @default("Hong Kong")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("doctor_profiles")
+  // Relations
+  referrals Referral[]
+  //consultations Consultation[]
+
+  @@index([licenseNumber])
+  @@index([userId])
 }
 
 model PhysioProfile {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  licenseNo    String  @unique
-  specialties  String[]
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  licenseNo   String   @unique
+  specialties String[]
+
   offersClinicService Boolean @default(true)
   offersHomeService   Boolean @default(false)
   clinicAddress       String?
   serviceRadius       Int?
-  
-  bankName     String?
+
+  bankName      String?
   accountNumber String?
-  accountName  String?
-  
+  accountName   String?
+
   isLicenseVerified Boolean @default(false)
   licenseDocument   String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -107,21 +132,35 @@ model PhysioProfile {
 }
 
 model PatientProfile {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  dateOfBirth  DateTime?
-  gender       Gender?
-  address      String?
-  
-  emergencyContactName  String?
-  emergencyContactPhone String?
-  
-  medicalHistory String?
-  allergies      String?
-  currentMedications String?
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dateOfBirth DateTime?
+  gender      Gender?
+
+  // Contact info
+  phone            String?
+  phoneCountryCode String  @default("+852")
+
+  // Address fields
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  postalCode   String?
+  country      String  @default("Hong Kong")
+
+  // Emergency contact
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+
+  // Medical info
+  medicalHistory     String? @db.Text
+  hasAllergies       Boolean @default(false)
+  allergies          Json?
+  currentMedications Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -136,20 +175,20 @@ enum Gender {
 }
 
 model Service {
-  id          String  @id @default(cuid())
-  providerId  String
-  provider    User    @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  
+  id         String @id @default(cuid())
+  providerId String
+  provider   User   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
   name        String
   description String?
   duration    Int
   price       Decimal
   serviceType ServiceType
-  
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   appointments Appointment[]
 
   @@map("services")
@@ -161,50 +200,52 @@ enum ServiceType {
 }
 
 model AvailabilitySlot {
-  id          String  @id @default(cuid())
-  providerId  String
-  provider    User    @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  
+  id         String @id @default(cuid())
+  providerId String
+  provider   User   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
   dayOfWeek   Int
   startTime   String
   endTime     String
   serviceType ServiceType
-  
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("availability_slots")
 }
 
 model Referral {
-  id          String    @id @default(cuid())
-  patientId   String
-  patient     User      @relation("PatientReferrals", fields: [patientId], references: [id])
-  doctorId    String
-  doctor      User      @relation("DoctorReferrals", fields: [doctorId], references: [id])
-  
+  id        String @id @default(cuid())
+  patientId String
+  patient   User   @relation("PatientReferrals", fields: [patientId], references: [id])
+  doctorId  String
+  doctor    User   @relation("DoctorReferrals", fields: [doctorId], references: [id])
+
   diagnosis   String
   sessions    Int
-  urgency     Urgency   @default(ROUTINE)
+  urgency     Urgency      @default(ROUTINE)
   serviceType ServiceType?
   notes       String?
-  
-  issuedAt    DateTime  @default(now())
-  expiryDate  DateTime
-  
-  pdfUrl      String?
+
+  issuedAt   DateTime @default(now())
+  expiryDate DateTime
+
+  pdfUrl       String?
   documentHash String?
-  qrCode      String?
-  
-  status      ReferralStatus @default(ACTIVE)
-  sessionsUsed Int @default(0)
-  
+  qrCode       String?
+
+  status       ReferralStatus @default(ACTIVE)
+  sessionsUsed Int            @default(0)
+
   appointments Appointment[]
   documents    Document[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  DoctorProfile   DoctorProfile? @relation(fields: [doctorProfileId], references: [id])
+  doctorProfileId String?
 
   @@map("referrals")
 }
@@ -223,39 +264,39 @@ enum ReferralStatus {
 }
 
 model Appointment {
-  id          String  @id @default(cuid())
-  
-  patientId   String
-  patient     User    @relation("PatientAppointments", fields: [patientId], references: [id])
-  physioId    String
-  physio      User    @relation("PhysioAppointments", fields: [physioId], references: [id])
-  doctorId    String?
-  doctor      User?   @relation("DoctorAppointments", fields: [doctorId], references: [id])
-  
-  referralId  String?
-  referral    Referral? @relation(fields: [referralId], references: [id])
-  serviceId   String
-  service     Service @relation(fields: [serviceId], references: [id])
-  
+  id String @id @default(cuid())
+
+  patientId String
+  patient   User    @relation("PatientAppointments", fields: [patientId], references: [id])
+  physioId  String
+  physio    User    @relation("PhysioAppointments", fields: [physioId], references: [id])
+  doctorId  String?
+  doctor    User?   @relation("DoctorAppointments", fields: [doctorId], references: [id])
+
+  referralId String?
+  referral   Referral? @relation(fields: [referralId], references: [id])
+  serviceId  String
+  service    Service   @relation(fields: [serviceId], references: [id])
+
   scheduledStart DateTime
   scheduledEnd   DateTime
   actualStart    DateTime?
   actualEnd      DateTime?
-  
+
   serviceType ServiceType
   location    String?
-  
-  status      AppointmentStatus @default(SCHEDULED)
-  checkInTime DateTime?
-  checkOutTime DateTime?
-  noShowGracePeriod Int @default(15)
-  
-  physioNotes String?
+
+  status            AppointmentStatus @default(SCHEDULED)
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  noShowGracePeriod Int               @default(15)
+
+  physioNotes  String?
   patientNotes String?
-  
-  payments Payment[]
+
+  payments  Payment[]
   feeSplits FeeSplit[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -273,29 +314,29 @@ enum AppointmentStatus {
 }
 
 model Payment {
-  id            String  @id @default(cuid())
+  id            String      @id @default(cuid())
   appointmentId String
   appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  
+
   amount        Decimal
-  currency      String @default("HKD")
+  currency      String        @default("HKD")
   paymentMethod PaymentMethod
-  
-  payerId       String
-  payer         User   @relation("PaymentPayer", fields: [payerId], references: [id])
-  receiverId    String
-  receiver      User   @relation("PaymentReceiver", fields: [receiverId], references: [id])
-  
+
+  payerId    String
+  payer      User   @relation("PaymentPayer", fields: [payerId], references: [id])
+  receiverId String
+  receiver   User   @relation("PaymentReceiver", fields: [receiverId], references: [id])
+
   stripePaymentIntentId String?
   stripeChargeId        String?
-  
-  status        PaymentStatus @default(PENDING)
-  paidAt        DateTime?
-  refundedAt    DateTime?
-  refundAmount  Decimal?
-  
-  feeSplits     FeeSplit[]
-  
+
+  status       PaymentStatus @default(PENDING)
+  paidAt       DateTime?
+  refundedAt   DateTime?
+  refundAmount Decimal?
+
+  feeSplits FeeSplit[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -320,43 +361,43 @@ enum PaymentStatus {
 }
 
 model FeeSplit {
-  id            String  @id @default(cuid())
+  id            String      @id @default(cuid())
   paymentId     String
-  payment       Payment @relation(fields: [paymentId], references: [id])
+  payment       Payment     @relation(fields: [paymentId], references: [id])
   appointmentId String
   appointment   Appointment @relation(fields: [appointmentId], references: [id])
-  
-  totalAmount     Decimal
-  referralFee     Decimal
-  physioFee       Decimal
-  platformFee     Decimal @default(0)
-  
-  doctorId        String?
-  physioId        String
-  
+
+  totalAmount Decimal
+  referralFee Decimal
+  physioFee   Decimal
+  platformFee Decimal @default(0)
+
+  doctorId String?
+  physioId String
+
   createdAt DateTime @default(now())
 
   @@map("fee_splits")
 }
 
 model Payout {
-  id          String  @id @default(cuid())
-  providerId  String
-  provider    User    @relation(fields: [providerId], references: [id])
-  
-  amount      Decimal
-  currency    String @default("HKD")
-  type        PayoutType
-  
+  id         String @id @default(cuid())
+  providerId String
+  provider   User   @relation(fields: [providerId], references: [id])
+
+  amount   Decimal
+  currency String     @default("HKD")
+  type     PayoutType
+
   stripeTransferId String?
-  
+
   status      PayoutStatus @default(PENDING)
   processedAt DateTime?
-  
+
   periodStart DateTime
   periodEnd   DateTime
   description String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -377,22 +418,22 @@ enum PayoutStatus {
 }
 
 model Document {
-  id          String  @id @default(cuid())
-  ownerId     String
-  owner       User    @relation(fields: [ownerId], references: [id])
-  
-  type        DocumentType
-  fileName    String
-  fileUrl     String
-  fileSize    Int?
-  mimeType    String?
-  
-  hash        String?
-  isVerified  Boolean @default(false)
-  
-  referralId  String?
-  referral    Referral? @relation(fields: [referralId], references: [id])
-  
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  type     DocumentType
+  fileName String
+  fileUrl  String
+  fileSize Int?
+  mimeType String?
+
+  hash       String?
+  isVerified Boolean @default(false)
+
+  referralId String?
+  referral   Referral? @relation(fields: [referralId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -410,20 +451,20 @@ enum DocumentType {
 }
 
 model Notification {
-  id          String  @id @default(cuid())
-  userId      String
-  user        User    @relation(fields: [userId], references: [id])
-  
-  type        NotificationType
-  channel     NotificationChannel
-  title       String
-  message     String
-  data        Json?
-  
-  status      NotificationStatus @default(PENDING)
-  sentAt      DateTime?
-  readAt      DateTime?
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type    NotificationType
+  channel NotificationChannel
+  title   String
+  message String
+  data    Json?
+
+  status NotificationStatus @default(PENDING)
+  sentAt DateTime?
+  readAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -457,21 +498,21 @@ enum NotificationStatus {
 }
 
 model AuditLog {
-  id          String  @id @default(cuid())
-  actorId     String?
-  actor       User?   @relation(fields: [actorId], references: [id])
-  
-  action      String
-  entityType  String
-  entityId    String?
-  
-  beforeData  Json?
-  afterData   Json?
-  
-  ipAddress   String?
-  userAgent   String?
-  sessionId   String?
-  
+  id      String  @id @default(cuid())
+  actorId String?
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  action     String
+  entityType String
+  entityId   String?
+
+  beforeData Json?
+  afterData  Json?
+
+  ipAddress String?
+  userAgent String?
+  sessionId String?
+
   timestamp DateTime @default(now())
 
   @@map("audit_logs")

@@ -14,7 +14,10 @@ export interface AuthResponse {
 
 export interface RegisterData {
     email: string;
+    username: string;
     password: string;
+    firstName?: string;
+    lastName?: string;
     phone?: string;
     role: 'PATIENT' | 'DOCTOR' | 'PHYSIO';
 }

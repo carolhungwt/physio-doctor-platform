@@ -15,6 +15,14 @@ export class RegisterDto {
 
   @IsOptional()
   @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+  
+  @IsOptional()
+  @IsString()
   phone?: string;
 
   @IsEnum(UserRole)

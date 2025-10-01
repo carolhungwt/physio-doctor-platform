@@ -19,6 +19,8 @@ export function RegisterForm() {
     email: '',
     username: '',
     password: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     role: 'PATIENT',
   });
@@ -83,20 +85,8 @@ export function RegisterForm() {
       
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
-      
-      switch (response.user.role) {
-        case 'PATIENT':
-          router.push('/patient/dashboard');
-          break;
-        case 'DOCTOR':
-          router.push('/doctor/dashboard');
-          break;
-        case 'PHYSIO':
-          router.push('/physio/dashboard');
-          break;
-        default:
-          router.push('/dashboard');
-      }
+
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -147,7 +137,36 @@ export function RegisterForm() {
               disabled={isLoading}
             />
           </div>
+          <div className="space-y-2">
+            <label htmlFor="firstName" className="text-sm font-medium">
+              First Name
+            </label>
+            <Input
+                id="firstName"
+                name="firstName"
+                type="text"
+                placeholder="John"
+                value={formData.firstName}
+                onChange={handleChange}
+                disabled={isLoading}
+            />
+          </div>
 
+          <div className="space-y-2">
+            <label htmlFor="lastName" className="text-sm font-medium">
+              Last Name
+            </label>
+            <Input
+                id="lastName"
+                name="lastName"
+                type="text"
+                placeholder="Doe"
+                value={formData.lastName}
+                onChange={handleChange}
+                disabled={isLoading}
+            />
+          </div>
+          
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email *

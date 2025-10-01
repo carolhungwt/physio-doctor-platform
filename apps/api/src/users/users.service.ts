@@ -11,6 +11,8 @@ export class UsersService {
     email: string;
     username: string;
     password: string;
+    firstName?: string;
+    lastName?: string;
     phone?: string;
     role: UserRole;
   }): Promise<User> {
@@ -25,6 +27,8 @@ export class UsersService {
         email: createUserDto.email,
         username: createUserDto.username,
         hashedPassword,
+        firstName: createUserDto.firstName,
+        lastName: createUserDto.lastName,
         phone: createUserDto.phone,
         role: createUserDto.role,
       },

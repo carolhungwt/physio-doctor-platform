@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         });
     }
 
-    async validate(payload: JwtPayload): Promise<User> {
+    async validate(payload: JwtPayload) {
         const user = await this.authService.validateUser(payload.sub);
         if (!user) {
             throw new UnauthorizedException('User not found');
@@ -30,6 +30,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         if (!user.isActive) {
             throw new UnauthorizedException('Account is deactivated');
         }
-        return user;
+        // Return object with userId so controller can access req.user.userId
+        return {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+        };
     }
 }
