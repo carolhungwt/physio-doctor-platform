@@ -495,13 +495,21 @@ export default function DashboardPage() {
                         )}
                         {user?.role === 'DOCTOR' && (
                             <>
-                                <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    className="h-auto py-4 flex flex-col items-center gap-2"
+                                    onClick={() => router.push('/doctor/referrals/create')}
+                                >
                                     <FileText className="h-6 w-6" />
                                     <span>Create Referral</span>
                                 </Button>
-                                <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    className="h-auto py-4 flex flex-col items-center gap-2"
+                                    onClick={() => router.push('/doctor/referrals')}
+                                >
                                     <Users className="h-6 w-6" />
-                                    <span>View Patients</span>
+                                    <span>My Referrals</span>
                                 </Button>
                                 <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
                                     <DollarSign className="h-6 w-6" />

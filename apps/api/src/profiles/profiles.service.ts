@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDoctorProfileDto } from './dto/create-doctor-profile.dto';
+import { CreatePhysioProfileDto } from './dto/create-physio-profile.dto';
 import { UserRole, Gender } from '@prisma/client';
 
 @Injectable()
@@ -130,6 +131,99 @@ export class ProfilesService {
 
     if (!profile) {
       throw new NotFoundException('Doctor profile not found');
+    }
+
+    return profile;
+  }
+
+  // Physiotherapist Profile Methods
+  async createPhysioProfile(userId: string, dto: CreatePhysioProfileDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { physioProfile: true }
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role !== UserRole.PHYSIO) {
+      throw new ConflictException('User is not registered as a physiotherapist');
+    }
+
+    if (user.physioProfile) {
+      throw new ConflictException('Physiotherapist profile already exists');
+    }
+
+    const existingLicense = await this.prisma.physioProfile.findFirst({
+      where: { licenseNo: dto.licenseNo }
+    });
+
+    if (existingLicense) {
+      throw new ConflictException('This license number is already registered');
+    }
+
+    const physioProfile = await this.prisma.physioProfile.create({
+      data: {
+        userId,
+        licenseNo: dto.licenseNo,
+        specialties: dto.specialties,
+        offersClinicService: dto.offersClinicService,
+        offersHomeService: dto.offersHomeService,
+        clinicAddress: dto.clinicAddress,
+        serviceRadius: dto.serviceRadius,
+        bankName: dto.bankName,
+        accountNumber: dto.accountNumber,
+        accountName: dto.accountName,
+        isLicenseVerified: false
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    // Create service offerings separately
+    if (dto.services && dto.services.length > 0) {
+      await this.prisma.service.createMany({
+        data: dto.services.map(service => ({
+          providerId: userId,
+          name: service.name,
+          description: service.description,
+          duration: service.duration,
+          price: service.price,
+          serviceType: service.serviceType as any
+        }))
+      });
+    }
+
+    return physioProfile;
+  }
+
+  async getPhysioProfile(userId: string) {
+    const profile = await this.prisma.physioProfile.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            phone: true,
+            services: true // Include the service offerings
+          }
+        }
+      }
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Physiotherapist profile not found');
     }
 
     return profile;

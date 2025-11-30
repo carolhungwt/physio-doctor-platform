@@ -1,0 +1,440 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertCircle, Search, User, ArrowLeft } from 'lucide-react';
+
+interface Patient {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  phone?: string;
+  patientProfile?: {
+    dateOfBirth?: string;
+    gender?: string;
+  };
+}
+
+export default function CreateReferralPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  const [formData, setFormData] = useState({
+    patientId: '',
+    diagnosis: '',
+    sessions: '6',
+    urgency: 'ROUTINE',
+    serviceType: '',
+    notes: '',
+    validityDays: '90'
+  });
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const fetchPatients = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/patients`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch patients');
+      }
+
+      const data = await response.json();
+      setPatients(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load patients');
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handlePatientSelect = (patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    setSelectedPatient(patient || null);
+    setFormData({ ...formData, patientId });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    // Validation
+    if (!formData.patientId) {
+      setError('Please select a patient');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.diagnosis.trim()) {
+      setError('Diagnosis is required');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.sessions || parseInt(formData.sessions) < 1) {
+      setError('Please specify at least 1 session');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        router.push('/auth/login');
+        return;
+      }
+
+      // Prepare referral data
+      const referralData = {
+        patientId: formData.patientId,
+        diagnosis: formData.diagnosis,
+        sessions: parseInt(formData.sessions),
+        urgency: formData.urgency,
+        serviceType: formData.serviceType || undefined,
+        notes: formData.notes || undefined,
+        validityDays: formData.validityDays ? parseInt(formData.validityDays) : 90
+      };
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/referrals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(referralData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create referral');
+      }
+
+      const result = await response.json();
+      setSuccess(true);
+
+      // Redirect to referral details or list after 2 seconds
+      setTimeout(() => {
+        router.push(`/doctor/referrals`);
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+      setLoading(false);
+    }
+  };
+
+  const filteredPatients = patients.filter(p => {
+    const searchLower = searchTerm.toLowerCase();
+    const fullName = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase();
+    return fullName.includes(searchLower) || 
+           p.email.toLowerCase().includes(searchLower) ||
+           (p.phone && p.phone.includes(searchTerm));
+  });
+
+  const getPatientDisplayName = (patient: Patient) => {
+    if (patient.firstName && patient.lastName) {
+      return `${patient.firstName} ${patient.lastName}`;
+    }
+    return patient.email;
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container max-w-2xl mx-auto px-4">
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                  <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-green-900 mb-2">Referral Created Successfully!</h3>
+                <p className="text-sm text-green-700">
+                  The patient has been notified and can now book appointments with physiotherapists.
+                </p>
+                <p className="text-xs text-green-600 mt-2">
+                  Redirecting to referrals list...
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container max-w-4xl mx-auto px-4">
+        <div className="mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push('/dashboard')}
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Physiotherapy Referral</CardTitle>
+            <CardDescription>
+              Issue a referral for your patient to book physiotherapy services. You'll earn 20% referral fee on completed appointments.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Patient Selection */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Patient Information</h3>
+
+                {loadingPatients ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label htmlFor="searchPatient">Search Patient</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          id="searchPatient"
+                          placeholder="Search by name, email, or phone"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="patientId">Select Patient *</Label>
+                      <Select 
+                        value={formData.patientId} 
+                        onValueChange={handlePatientSelect}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a patient" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredPatients.length === 0 ? (
+                            <div className="px-2 py-6 text-center text-sm text-gray-500">
+                              No patients found
+                            </div>
+                          ) : (
+                            filteredPatients.map((patient) => (
+                              <SelectItem key={patient.id} value={patient.id}>
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-gray-400" />
+                                  <span>{getPatientDisplayName(patient)}</span>
+                                  {patient.phone && (
+                                    <span className="text-xs text-gray-500">• {patient.phone}</span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedPatient && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-medium text-sm text-blue-900 mb-2">Selected Patient</h4>
+                        <div className="text-sm space-y-1">
+                          <p><strong>Name:</strong> {getPatientDisplayName(selectedPatient)}</p>
+                          <p><strong>Email:</strong> {selectedPatient.email}</p>
+                          {selectedPatient.phone && <p><strong>Phone:</strong> {selectedPatient.phone}</p>}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Clinical Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Clinical Information</h3>
+
+                <div>
+                  <Label htmlFor="diagnosis">Diagnosis *</Label>
+                  <Input
+                    id="diagnosis"
+                    name="diagnosis"
+                    value={formData.diagnosis}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Lower back pain, Sports injury - knee"
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Brief description of the condition requiring physiotherapy
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sessions">Number of Sessions *</Label>
+                    <Input
+                      id="sessions"
+                      name="sessions"
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={formData.sessions}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 6"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="validityDays">Valid For (Days)</Label>
+                    <Input
+                      id="validityDays"
+                      name="validityDays"
+                      type="number"
+                      min="30"
+                      max="365"
+                      value={formData.validityDays}
+                      onChange={handleInputChange}
+                      placeholder="90"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="urgency">Urgency Level</Label>
+                    <Select 
+                      value={formData.urgency} 
+                      onValueChange={(value) => setFormData({ ...formData, urgency: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ROUTINE">Routine</SelectItem>
+                        <SelectItem value="URGENT">Urgent</SelectItem>
+                        <SelectItem value="EMERGENCY">Emergency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="serviceType">Preferred Service Type</Label>
+                    <Select 
+                      value={formData.serviceType} 
+                      onValueChange={(value) => setFormData({ ...formData, serviceType: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any</SelectItem>
+                        <SelectItem value="CLINIC">Clinic Only</SelectItem>
+                        <SelectItem value="HOME_VISIT">Home Visit Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="notes">Additional Notes</Label>
+                  <Textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    placeholder="Any special instructions or considerations for the physiotherapist..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* Referral Fee Information */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-medium text-sm text-green-900 mb-2">💰 Referral Fee Structure</h4>
+                <p className="text-sm text-green-700">
+                  You will automatically receive <strong>20% of the service fee</strong> for each appointment 
+                  booked under this referral. The fee will be deposited to your registered bank account 
+                  within 7 business days after the appointment is completed.
+                </p>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex gap-4 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/dashboard')}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading || loadingPatients}
+                  className="bg-blue-600 hover:bg-blue-700 flex-1"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Referral...
+                    </>
+                  ) : (
+                    'Create Referral'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+

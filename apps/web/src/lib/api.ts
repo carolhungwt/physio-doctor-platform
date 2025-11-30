@@ -23,7 +23,9 @@ export interface RegisterData {
 }
 
 export interface LoginData {
-    email: string;
+    email?: string;
+    username?: string;
+    phone?: string;
     password: string;
 }
 

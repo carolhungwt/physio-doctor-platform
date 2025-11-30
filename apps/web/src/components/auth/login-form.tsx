@@ -21,7 +21,7 @@ export function LoginForm() {
   const [countryCode, setCountryCode] = useState('+852');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [formData, setFormData] = useState<LoginData>({
-    identifier: '',
+    email: '',
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +31,7 @@ export function LoginForm() {
   const handleMethodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const method = e.target.value as LoginMethod;
     setLoginMethod(method);
-    setFormData(prev => ({ ...prev, identifier: '' }));
+    setFormData({ password: formData.password });
     setPhoneNumber('');
     setError('');
   };
@@ -49,7 +49,7 @@ export function LoginForm() {
     setPhoneNumber(value);
     setFormData(prev => ({
       ...prev,
-      identifier: value ? `${countryCode}${value}` : '',
+      phone: value ? `${countryCode}${value}` : '',
     }));
   };
 
@@ -58,7 +58,7 @@ export function LoginForm() {
     setCountryCode(newCode);
     setFormData(prev => ({
       ...prev,
-      identifier: phoneNumber ? `${newCode}${phoneNumber}` : '',
+      phone: phoneNumber ? `${newCode}${phoneNumber}` : '',
     }));
   };
 
@@ -167,10 +167,10 @@ export function LoginForm() {
             ) : (
               <Input
                 id="identifier"
-                name="identifier"
+                name={loginMethod}
                 type={loginMethod === 'email' ? 'email' : 'text'}
                 placeholder={getPlaceholder()}
-                value={formData.identifier}
+                value={formData[loginMethod] || ''}
                 onChange={handleChange}
                 required
                 disabled={isLoading}

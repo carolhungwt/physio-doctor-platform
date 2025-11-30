@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ProfilesService } from './profiles.service';
 import { CreatePatientProfileDto } from './dto/create-patient-profile.dto';
 import { CreateDoctorProfileDto } from './dto/create-doctor-profile.dto';
+import { CreatePhysioProfileDto } from './dto/create-physio-profile.dto';
 
 @Controller('profiles')
 export class ProfilesController {
@@ -45,5 +46,24 @@ export class ProfilesController {
   @UseGuards(JwtAuthGuard)
   async getDoctorProfile(@Request() req) {
     return this.profilesService.getDoctorProfile(req.user.userId);
+  }
+
+  // Physiotherapist endpoints
+  @Post('physio')
+  @UseGuards(JwtAuthGuard)
+  async createPhysioProfile(
+      @Request() req,
+      @Body() createPhysioProfileDto: CreatePhysioProfileDto
+  ) {
+    return this.profilesService.createPhysioProfile(
+        req.user.userId,
+        createPhysioProfileDto
+    );
+  }
+
+  @Get('physio')
+  @UseGuards(JwtAuthGuard)
+  async getPhysioProfile(@Request() req) {
+    return this.profilesService.getPhysioProfile(req.user.userId);
   }
 }
