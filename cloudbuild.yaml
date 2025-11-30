@@ -1,0 +1,51 @@
+steps:
+  # Install dependencies
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['install', '-g', 'pnpm@10.24.0']
+    
+  - name: 'gcr.io/cloud-builders/npm'
+    entrypoint: 'pnpm'
+    args: ['install', '--frozen-lockfile']
+    env:
+      - 'CI=true'
+      - 'NODE_ENV=production'
+  
+  # Generate Prisma Client
+  - name: 'gcr.io/cloud-builders/npm'
+    entrypoint: 'pnpm'
+    args: ['--filter', 'api', 'prisma', 'generate']
+    
+  # Build the application
+  - name: 'gcr.io/cloud-builders/npm'
+    entrypoint: 'pnpm'
+    args: ['run', 'build']
+    env:
+      - 'NODE_ENV=production'
+
+  # Build and push Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/physio-doctor-platform:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/physio-doctor-platform:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+      
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/physio-doctor-platform:$COMMIT_SHA'
+
+images:
+  - 'gcr.io/$PROJECT_ID/physio-doctor-platform:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/physio-doctor-platform:latest'
+
+timeout: 1800s
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
