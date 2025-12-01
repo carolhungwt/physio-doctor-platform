@@ -14,7 +14,8 @@ import {
   CheckCircle,
   AlertCircle,
   Calendar,
-  User
+  User,
+  LogOut
 } from 'lucide-react';
 
 interface Referral {
@@ -39,6 +40,12 @@ export default function ReferralsListPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    router.push('/auth/login');
+  };
 
   useEffect(() => {
     fetchReferrals();
@@ -156,13 +163,23 @@ export default function ReferralsListPage() {
               Manage physiotherapy referrals for your patients
             </p>
           </div>
-          <Button 
-            onClick={() => router.push('/doctor/referrals/create')}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Referral
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => router.push('/doctor/referrals/create')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Referral
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {error && (

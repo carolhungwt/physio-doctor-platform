@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, Search, User, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertCircle, Search, User, ArrowLeft, LogOut } from 'lucide-react';
 
 interface Patient {
   id: string;
@@ -184,6 +184,12 @@ export default function CreateReferralPage() {
 
   const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewPatientData({ ...newPatientData, [e.target.name]: e.target.value });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    router.push('/auth/login');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -399,14 +405,21 @@ export default function CreateReferralPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container max-w-4xl mx-auto px-4">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Button 
             variant="ghost" 
             onClick={() => router.push('/dashboard')}
-            className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
           </Button>
         </div>
 

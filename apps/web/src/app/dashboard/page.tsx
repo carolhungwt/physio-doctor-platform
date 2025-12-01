@@ -14,7 +14,8 @@ import {
     CheckCircle,
     AlertCircle,
     Loader2,
-    Settings
+    Settings,
+    LogOut
 } from 'lucide-react';
 
 interface User {
@@ -52,6 +53,12 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [profileComplete, setProfileComplete] = useState(false);
     const [stats, setStats] = useState<DashboardStats | null>(null);
+
+    const handleLogout = () => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        router.push('/auth/login');
+    };
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -228,16 +235,26 @@ export default function DashboardPage() {
                             {user?.role === 'ADMIN' && 'Platform administration'}
                         </p>
                     </div>
-                    {user?.role !== 'ADMIN' && (
+                    <div className="flex items-center gap-3">
+                        {user?.role !== 'ADMIN' && (
+                            <Button
+                                variant="outline"
+                                onClick={handleCompleteProfile}
+                                className="flex items-center gap-2"
+                            >
+                                <Settings className="h-4 w-4" />
+                                Edit Profile
+                            </Button>
+                        )}
                         <Button
                             variant="outline"
-                            onClick={handleCompleteProfile}
-                            className="flex items-center gap-2"
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
                         >
-                            <Settings className="h-4 w-4" />
-                            Edit Profile
+                            <LogOut className="h-4 w-4" />
+                            Sign Out
                         </Button>
-                    )}
+                    </div>
                 </div>
             </div>
 
