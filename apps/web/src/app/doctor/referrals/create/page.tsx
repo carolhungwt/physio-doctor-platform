@@ -204,13 +204,8 @@ export default function CreateReferralPage() {
         setLoading(false);
         return;
       }
-      if (!newPatientData.email.trim()) {
-        setError('Patient email is required');
-        setLoading(false);
-        return;
-      }
-      if (!newPatientData.phone.trim()) {
-        setError('Patient phone number is required');
+      if (!newPatientData.email.trim() && !newPatientData.phone.trim()) {
+        setError('Please provide at least email or phone number for the patient');
         setLoading(false);
         return;
       }
@@ -605,7 +600,8 @@ export default function CreateReferralPage() {
                   <div className="space-y-4">
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                       <p className="text-sm text-yellow-800">
-                        <strong>Note:</strong> A new patient account will be created automatically using the information below.
+                        <strong>Note:</strong> A new patient account will be created automatically. 
+                        Please provide at least email or phone number for patient contact.
                       </p>
                     </div>
 
@@ -636,28 +632,26 @@ export default function CreateReferralPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor="email">Email *</Label>
+                      <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
                         name="email"
                         type="email"
                         value={newPatientData.email}
                         onChange={handleNewPatientChange}
-                        placeholder="john.doe@example.com"
-                        required={patientType === 'new'}
+                        placeholder="john.doe@example.com (optional)"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="phone">Phone Number *</Label>
+                      <Label htmlFor="phone">Phone Number</Label>
                       <Input
                         id="phone"
                         name="phone"
                         type="tel"
                         value={newPatientData.phone}
                         onChange={handleNewPatientChange}
-                        placeholder="+852 9123 4567"
-                        required={patientType === 'new'}
+                        placeholder="+852 9123 4567 (optional)"
                       />
                     </div>
                   </div>

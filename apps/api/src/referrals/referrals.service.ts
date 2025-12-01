@@ -73,17 +73,32 @@ export class ReferralsService {
       // Create new patient
       const { firstName, lastName, email, phone } = dto.newPatient;
 
-      // Check if patient with this email already exists
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email }
-      });
+      // Validate: at least email or phone must be provided
+      if (!email && !phone) {
+        throw new BadRequestException('Either email or phone number must be provided for new patient');
+      }
+
+      // Check if patient with this email or phone already exists
+      let existingUser = null;
+      
+      if (email) {
+        existingUser = await this.prisma.user.findUnique({
+          where: { email }
+        });
+      }
+      
+      if (!existingUser && phone) {
+        existingUser = await this.prisma.user.findUnique({
+          where: { phone }
+        });
+      }
 
       if (existingUser) {
         if (existingUser.role === UserRole.PATIENT) {
           // Use existing patient
           patientId = existingUser.id;
         } else {
-          throw new ConflictException('A user with this email already exists with a different role');
+          throw new ConflictException('A user with this contact information already exists with a different role');
         }
       } else {
         // Create new patient user and profile
@@ -91,14 +106,20 @@ export class ReferralsService {
         const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
         const hashedPassword = await bcrypt.hash(tempPassword, bcryptRounds);
 
+        // Generate email if not provided (for system purposes)
+        const systemEmail = email || `patient_${phone?.replace(/\D/g, '')}@temp.physio-platform.hk`;
+        const username = email 
+          ? email.split('@')[0] + Math.random().toString(36).slice(-4)
+          : `patient_${Date.now()}`;
+
         const newPatient = await this.prisma.user.create({
           data: {
-            email,
-            username: email.split('@')[0] + Math.random().toString(36).slice(-4),
+            email: systemEmail,
+            username: username,
             hashedPassword,
             firstName,
             lastName,
-            phone,
+            phone: phone || null,
             role: UserRole.PATIENT,
             isVerified: false,
             patientProfile: {
@@ -109,7 +130,9 @@ export class ReferralsService {
 
         patientId = newPatient.id;
 
-        // TODO: Send email to patient with account details and password reset link
+        // TODO: Send email/SMS to patient with account details and password reset link
+        // If email provided: send email
+        // If only phone provided: send SMS
       }
     } else {
       throw new BadRequestException('Either patientId or newPatient data must be provided');
