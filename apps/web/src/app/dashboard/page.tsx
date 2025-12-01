@@ -155,51 +155,7 @@ export default function DashboardPage() {
         );
     }
 
-    if (!profileComplete && user?.role !== 'ADMIN') {
-        return (
-            <div className="container max-w-2xl mx-auto px-4 py-16">
-                <Card className="border-yellow-200 bg-yellow-50">
-                    <CardHeader>
-                        <div className="flex items-center gap-3">
-                            <AlertCircle className="h-6 w-6 text-yellow-600" />
-                            <CardTitle>Complete Your Profile</CardTitle>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p className="text-gray-700">
-                            Welcome! To start using the platform, please complete your {user?.role.toLowerCase()} profile.
-                        </p>
-                        <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
-                            {user?.role === 'PATIENT' && (
-                                <>
-                                    <li>Medical history</li>
-                                    <li>Emergency contact information</li>
-                                    <li>Allergies and current medications</li>
-                                </>
-                            )}
-                            {user?.role === 'DOCTOR' && (
-                                <>
-                                    <li>Medical license verification</li>
-                                    <li>Specialties and consultation fees</li>
-                                    <li>Banking details for referral fees</li>
-                                </>
-                            )}
-                            {user?.role === 'PHYSIO' && (
-                                <>
-                                    <li>License verification</li>
-                                    <li>Services and pricing</li>
-                                    <li>Availability schedule</li>
-                                </>
-                            )}
-                        </ul>
-                        <Button onClick={handleCompleteProfile} className="w-full">
-                            Complete Profile Setup
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
+    // Profile completion banner (shown but not blocking)
 
     const getDisplayName = () => {
         if (user?.firstName && user?.lastName) {
@@ -210,6 +166,56 @@ export default function DashboardPage() {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            {/* Profile Completion Banner */}
+            {!profileComplete && user?.role !== 'ADMIN' && (
+                <div className="mb-6">
+                    <Card className="border-yellow-200 bg-yellow-50">
+                        <CardContent className="pt-6">
+                            <div className="flex items-start gap-4">
+                                <AlertCircle className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-yellow-900 mb-2">
+                                        Complete Your Profile to Access All Features
+                                    </h3>
+                                    <p className="text-sm text-yellow-800 mb-3">
+                                        Your account has limited functionality until you complete the required information:
+                                    </p>
+                                    <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700 mb-4">
+                                        {user?.role === 'DOCTOR' && (
+                                            <>
+                                                <li>Medical license verification</li>
+                                                <li>Specialties and consultation fees</li>
+                                                <li>Banking details for referral fees</li>
+                                            </>
+                                        )}
+                                        {user?.role === 'PHYSIO' && (
+                                            <>
+                                                <li>License verification</li>
+                                                <li>Services and pricing</li>
+                                                <li>Availability schedule</li>
+                                            </>
+                                        )}
+                                        {user?.role === 'PATIENT' && (
+                                            <>
+                                                <li>Medical history</li>
+                                                <li>Emergency contact information</li>
+                                                <li>Allergies and current medications</li>
+                                            </>
+                                        )}
+                                    </ul>
+                                    <Button 
+                                        onClick={handleCompleteProfile}
+                                        className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                                    >
+                                        Complete Profile Now
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">Welcome back, {getDisplayName()}!</h1>
                 <p className="text-gray-600 mt-2">
@@ -495,14 +501,24 @@ export default function DashboardPage() {
                         )}
                         {user?.role === 'DOCTOR' && (
                             <>
-                                <Button 
-                                    variant="outline" 
-                                    className="h-auto py-4 flex flex-col items-center gap-2"
-                                    onClick={() => router.push('/doctor/referrals/create')}
-                                >
-                                    <FileText className="h-6 w-6" />
-                                    <span>Create Referral</span>
-                                </Button>
+                                <div className="relative">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-auto py-4 flex flex-col items-center gap-2 w-full"
+                                        onClick={() => router.push('/doctor/referrals/create')}
+                                        disabled={!profileComplete}
+                                    >
+                                        <FileText className="h-6 w-6" />
+                                        <span>Create Referral</span>
+                                    </Button>
+                                    {!profileComplete && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/5 rounded-lg">
+                                            <span className="text-xs text-gray-600 font-medium">
+                                                Complete profile required
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                                 <Button 
                                     variant="outline" 
                                     className="h-auto py-4 flex flex-col items-center gap-2"
@@ -511,10 +527,23 @@ export default function DashboardPage() {
                                     <Users className="h-6 w-6" />
                                     <span>My Referrals</span>
                                 </Button>
-                                <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2">
-                                    <DollarSign className="h-6 w-6" />
-                                    <span>Earnings Report</span>
-                                </Button>
+                                <div className="relative">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-auto py-4 flex flex-col items-center gap-2 w-full"
+                                        disabled={!profileComplete}
+                                    >
+                                        <DollarSign className="h-6 w-6" />
+                                        <span>Earnings Report</span>
+                                    </Button>
+                                    {!profileComplete && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/5 rounded-lg">
+                                            <span className="text-xs text-gray-600 font-medium">
+                                                Complete profile required
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </>
                         )}
                         {user?.role === 'PHYSIO' && (

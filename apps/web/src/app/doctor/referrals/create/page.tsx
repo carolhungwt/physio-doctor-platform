@@ -32,6 +32,8 @@ export default function CreateReferralPage() {
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [profileComplete, setProfileComplete] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
 
   const [formData, setFormData] = useState({
     patientId: '',
@@ -44,10 +46,10 @@ export default function CreateReferralPage() {
   });
 
   useEffect(() => {
-    fetchPatients();
+    checkProfileAndFetchPatients();
   }, []);
 
-  const fetchPatients = async () => {
+  const checkProfileAndFetchPatients = async () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
@@ -55,10 +57,44 @@ export default function CreateReferralPage() {
         return;
       }
 
+      // Check if doctor profile is complete
+      const profileResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/profiles/doctor`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
+
+      if (!profileResponse.ok) {
+        setProfileComplete(false);
+        setCheckingProfile(false);
+        return;
+      }
+
+      setProfileComplete(true);
+      setCheckingProfile(false);
+
+      // Fetch patients if profile is complete
+      await fetchPatients(token);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load data');
+      setCheckingProfile(false);
+      setLoadingPatients(false);
+    }
+  };
+
+  const fetchPatients = async (token?: string) => {
+    try {
+      const authToken = token || localStorage.getItem('access_token');
+      if (!authToken) {
+        router.push('/auth/login');
+        return;
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/patients`,
         {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${authToken}` }
         }
       );
 
@@ -168,6 +204,60 @@ export default function CreateReferralPage() {
     }
     return patient.email;
   };
+
+  // Show loading while checking profile
+  if (checkingProfile) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  // Block access if profile is not complete
+  if (!profileComplete) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container max-w-2xl mx-auto px-4">
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-6 w-6 text-yellow-600" />
+                <CardTitle>Profile Completion Required</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-700">
+                You must complete your doctor profile before you can create referrals.
+              </p>
+              <p className="text-sm text-gray-600">
+                Required information includes:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-sm text-gray-600 ml-4">
+                <li>Medical license verification</li>
+                <li>Specialties and consultation fees</li>
+                <li>Banking details for referral fees</li>
+              </ul>
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  onClick={() => router.push('/onboarding/doctor')}
+                  className="bg-yellow-600 hover:bg-yellow-700"
+                >
+                  Complete Profile Now
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => router.push('/dashboard')}
+                >
+                  Back to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (

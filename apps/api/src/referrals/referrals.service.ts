@@ -19,7 +19,24 @@ export class ReferralsService {
     }
 
     if (!doctor.doctorProfile) {
-      throw new ConflictException('Doctor profile not completed');
+      throw new ConflictException('Doctor profile not completed. Please complete your profile to create referrals.');
+    }
+
+    // Validate required profile fields
+    const profile = doctor.doctorProfile;
+    const missingFields: string[] = [];
+
+    if (!profile.licenseNumber) missingFields.push('Medical license number');
+    if (!profile.specialties || profile.specialties.length === 0) missingFields.push('Specialties');
+    if (!profile.consultationFee) missingFields.push('Consultation fee');
+    if (!profile.bankName || !profile.bankAccountNumber || !profile.bankAccountName) {
+      missingFields.push('Banking details (required for referral fees)');
+    }
+
+    if (missingFields.length > 0) {
+      throw new ConflictException(
+        `Profile incomplete. Missing required fields: ${missingFields.join(', ')}`
+      );
     }
 
     // Verify patient exists

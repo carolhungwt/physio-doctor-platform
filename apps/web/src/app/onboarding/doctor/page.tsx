@@ -519,6 +519,19 @@ export default function DoctorOnboardingPage() {
                                 </div>
                             </div>
 
+                            {/* Important Notice */}
+                            <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                    <strong>Note:</strong> You can skip this for now, but key features like creating referrals and earning referral fees will be disabled until you complete your profile with:
+                                    <ul className="list-disc list-inside mt-2 ml-2 text-sm">
+                                        <li>Medical license verification</li>
+                                        <li>Specialties and consultation fees</li>
+                                        <li>Banking details</li>
+                                    </ul>
+                                </AlertDescription>
+                            </Alert>
+
                             {/* Submit Button */}
                             <div className="flex gap-4">
                                 <Button
@@ -527,12 +540,12 @@ export default function DoctorOnboardingPage() {
                                     onClick={() => router.push('/dashboard')}
                                     disabled={loading}
                                 >
-                                    Cancel
+                                    Skip for Now
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    className="bg-blue-600 hover:bg-blue-700 flex-1"
                                 >
                                     {loading ? (
                                         <>
