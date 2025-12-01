@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +60,8 @@ interface ServiceOffering {
 export default function PhysioOnboardingPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [error, setError] = useState('');
     const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
     const [customSpecialty, setCustomSpecialty] = useState('');
@@ -87,6 +89,70 @@ export default function PhysioOnboardingPage() {
             serviceType: 'CLINIC'
         }
     ]);
+
+    // Fetch existing profile data
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    router.push('/auth/login');
+                    return;
+                }
+
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profiles`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.physioProfile) {
+                        // Profile exists - pre-fill form
+                        setIsEditMode(true);
+                        const profile = data.physioProfile;
+                        
+                        setFormData({
+                            licenseNo: profile.licenseNo || '',
+                            offersClinicService: profile.offersClinicService ?? true,
+                            offersHomeService: profile.offersHomeService ?? false,
+                            clinicAddress: profile.clinicAddress || '',
+                            serviceRadius: profile.serviceRadius?.toString() || '',
+                            bankName: profile.bankName || '',
+                            accountNumber: profile.accountNumber || '',
+                            accountName: profile.accountName || ''
+                        });
+
+                        if (profile.specialties && profile.specialties.length > 0) {
+                            setSelectedSpecialties(profile.specialties);
+                        }
+
+                        if (profile.serviceDistricts && profile.serviceDistricts.length > 0) {
+                            setSelectedDistricts(profile.serviceDistricts);
+                        }
+
+                        if (profile.services && profile.services.length > 0) {
+                            setServices(profile.services.map((s: any) => ({
+                                name: s.name || '',
+                                description: s.description || '',
+                                duration: s.duration?.toString() || '',
+                                price: s.price?.toString() || '',
+                                serviceType: s.serviceType || 'CLINIC'
+                            })));
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching profile:', err);
+            } finally {
+                setLoadingProfile(false);
+            }
+        };
+
+        fetchProfile();
+    }, [router]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -211,7 +277,7 @@ export default function PhysioOnboardingPage() {
             // For now, we'll proceed without the file upload
 
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profiles/physio`, {
-                method: 'POST',
+                method: isEditMode ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -221,7 +287,7 @@ export default function PhysioOnboardingPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create physiotherapist profile');
+                throw new Error(errorData.message || `Failed to ${isEditMode ? 'update' : 'create'} physiotherapist profile`);
             }
 
             // Success - redirect to dashboard
@@ -233,14 +299,27 @@ export default function PhysioOnboardingPage() {
         }
     };
 
+    if (loadingProfile) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container max-w-4xl mx-auto px-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Physiotherapist Profile Setup</CardTitle>
+                        <CardTitle>
+                            {isEditMode ? 'Edit Physiotherapist Profile' : 'Physiotherapist Profile Setup'}
+                        </CardTitle>
                         <CardDescription>
-                            Complete your professional profile to start accepting patient bookings
+                            {isEditMode 
+                                ? 'Update your professional profile information'
+                                : 'Complete your professional profile to start accepting patient bookings'
+                            }
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -629,10 +708,10 @@ export default function PhysioOnboardingPage() {
                                     {loading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Creating Profile...
+                                            {isEditMode ? 'Saving Changes...' : 'Creating Profile...'}
                                         </>
                                     ) : (
-                                        'Complete Profile'
+                                        isEditMode ? 'Save Changes' : 'Complete Profile'
                                     )}
                                 </Button>
                             </div>

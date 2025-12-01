@@ -58,10 +58,17 @@ class ApiClient {
     }
 
     async login(data: LoginData): Promise<AuthResponse> {
+        // Transform data to match backend's LoginDto (identifier + password)
+        const identifier = data.email || data.username || data.phone || '';
+        const loginPayload = {
+            identifier,
+            password: data.password,
+        };
+
         const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: 'POST',
             headers: this.getHeaders(),
-            body: JSON.stringify(data),
+            body: JSON.stringify(loginPayload),
         });
 
         if (!response.ok) {
