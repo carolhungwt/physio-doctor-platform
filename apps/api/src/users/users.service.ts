@@ -113,4 +113,45 @@ export class UsersService {
   async verifyUser(id: string): Promise<User> {
     return this.updateUser(id, { isVerified: true });
   }
+
+  async findByRole(role?: string): Promise<User[]> {
+    if (!role) {
+      return this.prisma.user.findMany({
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          role: true,
+          isVerified: true,
+          isActive: true,
+          createdAt: true,
+        },
+      });
+    }
+
+    return this.prisma.user.findMany({
+      where: {
+        role: role as UserRole,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+        isVerified: true,
+        isActive: true,
+        createdAt: true,
+        doctorProfile: role === 'DOCTOR',
+        physioProfile: role === 'PHYSIO',
+        patientProfile: role === 'PATIENT',
+      },
+    });
+  }
 }

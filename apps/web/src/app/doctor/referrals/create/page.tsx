@@ -23,6 +23,17 @@ interface Patient {
   };
 }
 
+interface Physio {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  physioProfile?: {
+    licenseNo: string;
+    specialties: string[];
+  };
+}
+
 export default function CreateReferralPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -34,9 +45,23 @@ export default function CreateReferralPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [profileComplete, setProfileComplete] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  
+  const [physios, setPhysios] = useState<Physio[]>([]);
+  const [loadingPhysios, setLoadingPhysios] = useState(true);
+  const [physioSearchTerm, setPhysioSearchTerm] = useState('');
+  const [selectedPhysio, setSelectedPhysio] = useState<Physio | null>(null);
+  
+  const [patientType, setPatientType] = useState<'existing' | 'new'>('existing');
+  const [newPatientData, setNewPatientData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
 
   const [formData, setFormData] = useState({
     patientId: '',
+    physioId: '',
     diagnosis: '',
     sessions: '6',
     urgency: 'ROUTINE',
@@ -74,8 +99,11 @@ export default function CreateReferralPage() {
       setProfileComplete(true);
       setCheckingProfile(false);
 
-      // Fetch patients if profile is complete
-      await fetchPatients(token);
+      // Fetch patients and physios if profile is complete
+      await Promise.all([
+        fetchPatients(token),
+        fetchPhysios(token)
+      ]);
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
       setCheckingProfile(false);
@@ -111,6 +139,33 @@ export default function CreateReferralPage() {
     }
   };
 
+  const fetchPhysios = async (token?: string) => {
+    try {
+      const authToken = token || localStorage.getItem('access_token');
+      if (!authToken) {
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users?role=PHYSIO`,
+        {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch physiotherapists');
+      }
+
+      const data = await response.json();
+      setPhysios(data);
+    } catch (err: any) {
+      console.error('Failed to load physiotherapists:', err);
+    } finally {
+      setLoadingPhysios(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -121,14 +176,48 @@ export default function CreateReferralPage() {
     setFormData({ ...formData, patientId });
   };
 
+  const handlePhysioSelect = (physioId: string) => {
+    const physio = physios.find(p => p.id === physioId);
+    setSelectedPhysio(physio || null);
+    setFormData({ ...formData, physioId });
+  };
+
+  const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatientData({ ...newPatientData, [e.target.name]: e.target.value });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     // Validation
-    if (!formData.patientId) {
+    if (patientType === 'existing' && !formData.patientId) {
       setError('Please select a patient');
+      setLoading(false);
+      return;
+    }
+
+    if (patientType === 'new') {
+      if (!newPatientData.firstName.trim() || !newPatientData.lastName.trim()) {
+        setError('Patient first name and last name are required');
+        setLoading(false);
+        return;
+      }
+      if (!newPatientData.email.trim()) {
+        setError('Patient email is required');
+        setLoading(false);
+        return;
+      }
+      if (!newPatientData.phone.trim()) {
+        setError('Patient phone number is required');
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (!formData.physioId) {
+      setError('Please select a physiotherapist');
       setLoading(false);
       return;
     }
@@ -153,8 +242,8 @@ export default function CreateReferralPage() {
       }
 
       // Prepare referral data
-      const referralData = {
-        patientId: formData.patientId,
+      const referralData: any = {
+        physioId: formData.physioId,
         diagnosis: formData.diagnosis,
         sessions: parseInt(formData.sessions),
         urgency: formData.urgency,
@@ -162,6 +251,18 @@ export default function CreateReferralPage() {
         notes: formData.notes || undefined,
         validityDays: formData.validityDays ? parseInt(formData.validityDays) : 90
       };
+
+      // Add patient data based on type
+      if (patientType === 'existing') {
+        referralData.patientId = formData.patientId;
+      } else {
+        referralData.newPatient = {
+          firstName: newPatientData.firstName,
+          lastName: newPatientData.lastName,
+          email: newPatientData.email,
+          phone: newPatientData.phone
+        };
+      }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/referrals`, {
         method: 'POST',
@@ -198,11 +299,25 @@ export default function CreateReferralPage() {
            (p.phone && p.phone.includes(searchTerm));
   });
 
+  const filteredPhysios = physios.filter(p => {
+    const searchLower = physioSearchTerm.toLowerCase();
+    const fullName = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase();
+    return fullName.includes(searchLower) || 
+           p.email.toLowerCase().includes(searchLower);
+  });
+
   const getPatientDisplayName = (patient: Patient) => {
     if (patient.firstName && patient.lastName) {
       return `${patient.firstName} ${patient.lastName}`;
     }
     return patient.email;
+  };
+
+  const getPhysioDisplayName = (physio: Physio) => {
+    if (physio.firstName && physio.lastName) {
+      return `${physio.firstName} ${physio.lastName}`;
+    }
+    return physio.email;
   };
 
   // Show loading while checking profile
@@ -316,52 +431,54 @@ export default function CreateReferralPage() {
                 </Alert>
               )}
 
-              {/* Patient Selection */}
+              {/* Physiotherapist Selection */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Patient Information</h3>
+                <h3 className="text-lg font-semibold">Physiotherapist Assignment</h3>
 
-                {loadingPatients ? (
+                {loadingPhysios ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                   </div>
                 ) : (
                   <>
                     <div>
-                      <Label htmlFor="searchPatient">Search Patient</Label>
+                      <Label htmlFor="searchPhysio">Search Physiotherapist</Label>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
-                          id="searchPatient"
-                          placeholder="Search by name, email, or phone"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
+                          id="searchPhysio"
+                          placeholder="Search by name or email"
+                          value={physioSearchTerm}
+                          onChange={(e) => setPhysioSearchTerm(e.target.value)}
                           className="pl-10"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="patientId">Select Patient *</Label>
+                      <Label htmlFor="physioId">Select Physiotherapist *</Label>
                       <Select 
-                        value={formData.patientId} 
-                        onValueChange={handlePatientSelect}
+                        value={formData.physioId} 
+                        onValueChange={handlePhysioSelect}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Choose a patient" />
+                          <SelectValue placeholder="Choose a physiotherapist" />
                         </SelectTrigger>
                         <SelectContent>
-                          {filteredPatients.length === 0 ? (
+                          {filteredPhysios.length === 0 ? (
                             <div className="px-2 py-6 text-center text-sm text-gray-500">
-                              No patients found
+                              No physiotherapists found
                             </div>
                           ) : (
-                            filteredPatients.map((patient) => (
-                              <SelectItem key={patient.id} value={patient.id}>
+                            filteredPhysios.map((physio) => (
+                              <SelectItem key={physio.id} value={physio.id}>
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-gray-400" />
-                                  <span>{getPatientDisplayName(patient)}</span>
-                                  {patient.phone && (
-                                    <span className="text-xs text-gray-500">• {patient.phone}</span>
+                                  <span>{getPhysioDisplayName(physio)}</span>
+                                  {physio.physioProfile?.specialties && (
+                                    <span className="text-xs text-gray-500">
+                                      • {physio.physioProfile.specialties.slice(0, 2).join(', ')}
+                                    </span>
                                   )}
                                 </div>
                               </SelectItem>
@@ -371,17 +488,179 @@ export default function CreateReferralPage() {
                       </Select>
                     </div>
 
-                    {selectedPatient && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="font-medium text-sm text-blue-900 mb-2">Selected Patient</h4>
+                    {selectedPhysio && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 className="font-medium text-sm text-green-900 mb-2">Selected Physiotherapist</h4>
                         <div className="text-sm space-y-1">
-                          <p><strong>Name:</strong> {getPatientDisplayName(selectedPatient)}</p>
-                          <p><strong>Email:</strong> {selectedPatient.email}</p>
-                          {selectedPatient.phone && <p><strong>Phone:</strong> {selectedPatient.phone}</p>}
+                          <p><strong>Name:</strong> {getPhysioDisplayName(selectedPhysio)}</p>
+                          <p><strong>Email:</strong> {selectedPhysio.email}</p>
+                          {selectedPhysio.physioProfile?.licenseNo && (
+                            <p><strong>License:</strong> {selectedPhysio.physioProfile.licenseNo}</p>
+                          )}
+                          {selectedPhysio.physioProfile?.specialties && selectedPhysio.physioProfile.specialties.length > 0 && (
+                            <p><strong>Specialties:</strong> {selectedPhysio.physioProfile.specialties.join(', ')}</p>
+                          )}
                         </div>
                       </div>
                     )}
                   </>
+                )}
+              </div>
+
+              {/* Patient Selection */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Patient Information</h3>
+
+                {/* Toggle between existing and new patient */}
+                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setPatientType('existing')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      patientType === 'existing'
+                        ? 'bg-white text-blue-600 shadow'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Existing Patient
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPatientType('new')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      patientType === 'new'
+                        ? 'bg-white text-blue-600 shadow'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    New Patient
+                  </button>
+                </div>
+
+                {patientType === 'existing' ? (
+                  loadingPatients ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <Label htmlFor="searchPatient">Search Patient</Label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            id="searchPatient"
+                            placeholder="Search by name, email, or phone"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="patientId">Select Patient *</Label>
+                        <Select 
+                          value={formData.patientId} 
+                          onValueChange={handlePatientSelect}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a patient" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredPatients.length === 0 ? (
+                              <div className="px-2 py-6 text-center text-sm text-gray-500">
+                                No patients found
+                              </div>
+                            ) : (
+                              filteredPatients.map((patient) => (
+                                <SelectItem key={patient.id} value={patient.id}>
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-gray-400" />
+                                    <span>{getPatientDisplayName(patient)}</span>
+                                    {patient.phone && (
+                                      <span className="text-xs text-gray-500">• {patient.phone}</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedPatient && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h4 className="font-medium text-sm text-blue-900 mb-2">Selected Patient</h4>
+                          <div className="text-sm space-y-1">
+                            <p><strong>Name:</strong> {getPatientDisplayName(selectedPatient)}</p>
+                            <p><strong>Email:</strong> {selectedPatient.email}</p>
+                            {selectedPatient.phone && <p><strong>Phone:</strong> {selectedPatient.phone}</p>}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Note:</strong> A new patient account will be created automatically using the information below.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="firstName">First Name *</Label>
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          value={newPatientData.firstName}
+                          onChange={handleNewPatientChange}
+                          placeholder="John"
+                          required={patientType === 'new'}
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="lastName">Last Name *</Label>
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          value={newPatientData.lastName}
+                          onChange={handleNewPatientChange}
+                          placeholder="Doe"
+                          required={patientType === 'new'}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="email">Email *</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={newPatientData.email}
+                        onChange={handleNewPatientChange}
+                        placeholder="john.doe@example.com"
+                        required={patientType === 'new'}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={newPatientData.phone}
+                        onChange={handleNewPatientChange}
+                        placeholder="+852 9123 4567"
+                        required={patientType === 'new'}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
 

@@ -1,13 +1,14 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReferralDto } from './dto/create-referral.dto';
 import { UserRole, Urgency } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class ReferralsService {
   constructor(private prisma: PrismaService) {}
 
-  async createReferral(doctorId: string, dto: CreateReferralDto) {
+  async createReferral(doctorId: string, dto: any) {
     // Verify doctor exists and has a profile
     const doctor = await this.prisma.user.findUnique({
       where: { id: doctorId },
@@ -39,18 +40,79 @@ export class ReferralsService {
       );
     }
 
-    // Verify patient exists
-    const patient = await this.prisma.user.findUnique({
-      where: { id: dto.patientId },
-      include: { patientProfile: true }
-    });
-
-    if (!patient || patient.role !== UserRole.PATIENT) {
-      throw new NotFoundException('Patient not found');
+    // Verify physiotherapist exists
+    if (!dto.physioId) {
+      throw new BadRequestException('Physiotherapist selection is required');
     }
 
-    if (!patient.patientProfile) {
-      throw new ConflictException('Patient profile not found');
+    const physio = await this.prisma.user.findUnique({
+      where: { id: dto.physioId },
+      include: { physioProfile: true }
+    });
+
+    if (!physio || physio.role !== UserRole.PHYSIO) {
+      throw new NotFoundException('Physiotherapist not found');
+    }
+
+    // Handle patient - either existing or create new
+    let patientId: string;
+
+    if (dto.patientId) {
+      // Verify existing patient
+      const patient = await this.prisma.user.findUnique({
+        where: { id: dto.patientId },
+        include: { patientProfile: true }
+      });
+
+      if (!patient || patient.role !== UserRole.PATIENT) {
+        throw new NotFoundException('Patient not found');
+      }
+
+      patientId = patient.id;
+    } else if (dto.newPatient) {
+      // Create new patient
+      const { firstName, lastName, email, phone } = dto.newPatient;
+
+      // Check if patient with this email already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email }
+      });
+
+      if (existingUser) {
+        if (existingUser.role === UserRole.PATIENT) {
+          // Use existing patient
+          patientId = existingUser.id;
+        } else {
+          throw new ConflictException('A user with this email already exists with a different role');
+        }
+      } else {
+        // Create new patient user and profile
+        const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+        const tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+        const hashedPassword = await bcrypt.hash(tempPassword, bcryptRounds);
+
+        const newPatient = await this.prisma.user.create({
+          data: {
+            email,
+            username: email.split('@')[0] + Math.random().toString(36).slice(-4),
+            hashedPassword,
+            firstName,
+            lastName,
+            phone,
+            role: UserRole.PATIENT,
+            isVerified: false,
+            patientProfile: {
+              create: {}
+            }
+          }
+        });
+
+        patientId = newPatient.id;
+
+        // TODO: Send email to patient with account details and password reset link
+      }
+    } else {
+      throw new BadRequestException('Either patientId or newPatient data must be provided');
     }
 
     // Calculate expiry date (default 90 days)
@@ -61,7 +123,7 @@ export class ReferralsService {
     // Create the referral
     const referral = await this.prisma.referral.create({
       data: {
-        patientId: dto.patientId,
+        patientId: patientId,
         doctorId: doctorId,
         diagnosis: dto.diagnosis,
         sessions: dto.sessions,
