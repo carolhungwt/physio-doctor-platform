@@ -108,11 +108,14 @@ export default function PhysioOnboardingPage() {
 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Fetched profile data:', data);
                     
-                    if (data.physioProfile) {
+                    // API returns the profile directly, not nested
+                    if (data && data.id) {
                         // Profile exists - pre-fill form
                         setIsEditMode(true);
-                        const profile = data.physioProfile;
+                        console.log('Edit mode enabled - profile found');
+                        const profile = data;
                         
                         // Auto-determine service checkboxes based on existing data
                         const hasClinicService = profile.offersClinicService || !!profile.clinicAddress;

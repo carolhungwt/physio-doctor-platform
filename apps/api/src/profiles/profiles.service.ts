@@ -68,12 +68,22 @@ export class ProfilesService {
       throw new ConflictException('Doctor profile already exists');
     }
 
-    const existingLicense = await this.prisma.doctorProfile.findFirst({
+    // Check if license number exists in doctor profiles
+    const existingDoctorLicense = await this.prisma.doctorProfile.findFirst({
       where: { licenseNumber: dto.licenseNumber }
     });
 
-    if (existingLicense) {
-      throw new ConflictException('This license number is already registered');
+    if (existingDoctorLicense) {
+      throw new ConflictException('This license number is already registered to another doctor');
+    }
+
+    // Cross-check with physio profiles
+    const existingPhysioLicense = await this.prisma.physioProfile.findFirst({
+      where: { licenseNo: dto.licenseNumber }
+    });
+
+    if (existingPhysioLicense) {
+      throw new ConflictException('This license number is already registered to a physiotherapist');
     }
 
     const doctorProfile = await this.prisma.doctorProfile.create({
@@ -147,15 +157,25 @@ export class ProfilesService {
 
     // Check if license number is being changed and if it's already taken
     if (dto.licenseNumber !== profile.licenseNumber) {
-      const existingLicense = await this.prisma.doctorProfile.findFirst({
+      // Check doctor profiles
+      const existingDoctorLicense = await this.prisma.doctorProfile.findFirst({
         where: { 
           licenseNumber: dto.licenseNumber,
           userId: { not: userId }
         }
       });
 
-      if (existingLicense) {
-        throw new ConflictException('This license number is already registered');
+      if (existingDoctorLicense) {
+        throw new ConflictException('This license number is already registered to another doctor');
+      }
+
+      // Cross-check with physio profiles
+      const existingPhysioLicense = await this.prisma.physioProfile.findFirst({
+        where: { licenseNo: dto.licenseNumber }
+      });
+
+      if (existingPhysioLicense) {
+        throw new ConflictException('This license number is already registered to a physiotherapist');
       }
     }
 
@@ -214,12 +234,22 @@ export class ProfilesService {
       throw new ConflictException('Physiotherapist profile already exists');
     }
 
-    const existingLicense = await this.prisma.physioProfile.findFirst({
+    // Check if license number exists in physio profiles
+    const existingPhysioLicense = await this.prisma.physioProfile.findFirst({
       where: { licenseNo: dto.licenseNo }
     });
 
-    if (existingLicense) {
-      throw new ConflictException('This license number is already registered');
+    if (existingPhysioLicense) {
+      throw new ConflictException('This license number is already registered to another physiotherapist');
+    }
+
+    // Cross-check with doctor profiles
+    const existingDoctorLicense = await this.prisma.doctorProfile.findFirst({
+      where: { licenseNumber: dto.licenseNo }
+    });
+
+    if (existingDoctorLicense) {
+      throw new ConflictException('This license number is already registered to a doctor');
     }
 
     const physioProfile = await this.prisma.physioProfile.create({
@@ -308,15 +338,25 @@ export class ProfilesService {
 
     // Check if license number is being changed and if it's already taken
     if (dto.licenseNo !== profile.licenseNo) {
-      const existingLicense = await this.prisma.physioProfile.findFirst({
+      // Check physio profiles
+      const existingPhysioLicense = await this.prisma.physioProfile.findFirst({
         where: { 
           licenseNo: dto.licenseNo,
           userId: { not: userId }
         }
       });
 
-      if (existingLicense) {
-        throw new ConflictException('This license number is already registered');
+      if (existingPhysioLicense) {
+        throw new ConflictException('This license number is already registered to another physiotherapist');
+      }
+
+      // Cross-check with doctor profiles
+      const existingDoctorLicense = await this.prisma.doctorProfile.findFirst({
+        where: { licenseNumber: dto.licenseNo }
+      });
+
+      if (existingDoctorLicense) {
+        throw new ConflictException('This license number is already registered to a doctor');
       }
     }
 
