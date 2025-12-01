@@ -13,7 +13,8 @@ import {
     Clock,
     CheckCircle,
     AlertCircle,
-    Loader2
+    Loader2,
+    Settings
 } from 'lucide-react';
 
 interface User {
@@ -217,13 +218,27 @@ export default function DashboardPage() {
             )}
 
             <div className="mb-8">
-                <h1 className="text-3xl font-bold">Welcome back, {getDisplayName()}!</h1>
-                <p className="text-gray-600 mt-2">
-                    {user?.role === 'PATIENT' && 'Manage your appointments and referrals'}
-                    {user?.role === 'DOCTOR' && 'Manage your patients and referrals'}
-                    {user?.role === 'PHYSIO' && 'Manage your appointments and services'}
-                    {user?.role === 'ADMIN' && 'Platform administration'}
-                </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold">Welcome back, {getDisplayName()}!</h1>
+                        <p className="text-gray-600 mt-2">
+                            {user?.role === 'PATIENT' && 'Manage your appointments and referrals'}
+                            {user?.role === 'DOCTOR' && 'Manage your patients and referrals'}
+                            {user?.role === 'PHYSIO' && 'Manage your appointments and services'}
+                            {user?.role === 'ADMIN' && 'Platform administration'}
+                        </p>
+                    </div>
+                    {user?.role !== 'ADMIN' && (
+                        <Button
+                            variant="outline"
+                            onClick={handleCompleteProfile}
+                            className="flex items-center gap-2"
+                        >
+                            <Settings className="h-4 w-4" />
+                            Edit Profile
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Patient Dashboard */}
