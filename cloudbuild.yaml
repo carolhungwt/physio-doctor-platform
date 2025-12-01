@@ -1,24 +1,33 @@
 steps:
-  # Install pnpm
-  - name: 'gcr.io/cloud-builders/npm'
-    args: ['install', '-g', 'pnpm@10.24.0']
-    
-  # Install dependencies (regenerate lockfile)
-  - name: 'gcr.io/cloud-builders/npm'
-    entrypoint: 'pnpm'
-    args: ['install', '--no-frozen-lockfile']
+  # Install dependencies with pnpm
+  - name: 'node:22-alpine'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        npm install -g pnpm@10.24.0
+        pnpm install --no-frozen-lockfile
     env:
       - 'NODE_ENV=production'
   
   # Generate Prisma Client
-  - name: 'gcr.io/cloud-builders/npm'
-    entrypoint: 'pnpm'
-    args: ['--filter', 'api', 'exec', 'prisma', 'generate']
+  - name: 'node:22-alpine'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        npm install -g pnpm@10.24.0
+        cd apps/api
+        pnpm exec prisma generate
     
   # Build applications
-  - name: 'gcr.io/cloud-builders/npm'
-    entrypoint: 'pnpm'
-    args: ['run', 'build']
+  - name: 'node:22-alpine'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        npm install -g pnpm@10.24.0
+        pnpm run build
     env:
       - 'NODE_ENV=production'
 
