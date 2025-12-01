@@ -114,7 +114,7 @@ export class UsersService {
     return this.updateUser(id, { isVerified: true });
   }
 
-  async findByRole(role?: string): Promise<User[]> {
+  async findByRole(role?: string): Promise<any[]> {
     if (!role) {
       return this.prisma.user.findMany({
         select: {
