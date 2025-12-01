@@ -40,7 +40,7 @@ export default function CreateReferralPage() {
     diagnosis: '',
     sessions: '6',
     urgency: 'ROUTINE',
-    serviceType: '',
+    serviceType: 'ANY',
     notes: '',
     validityDays: '90'
   });
@@ -158,7 +158,7 @@ export default function CreateReferralPage() {
         diagnosis: formData.diagnosis,
         sessions: parseInt(formData.sessions),
         urgency: formData.urgency,
-        serviceType: formData.serviceType || undefined,
+        serviceType: formData.serviceType === 'ANY' ? undefined : formData.serviceType || undefined,
         notes: formData.notes || undefined,
         validityDays: formData.validityDays ? parseInt(formData.validityDays) : 90
       };
@@ -460,10 +460,10 @@ export default function CreateReferralPage() {
                       onValueChange={(value) => setFormData({ ...formData, serviceType: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Any" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Any</SelectItem>
+                        <SelectItem value="ANY">Any</SelectItem>
                         <SelectItem value="CLINIC">Clinic Only</SelectItem>
                         <SelectItem value="HOME_VISIT">Home Visit Only</SelectItem>
                       </SelectContent>
