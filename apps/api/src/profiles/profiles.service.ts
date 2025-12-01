@@ -136,6 +136,65 @@ export class ProfilesService {
     return profile;
   }
 
+  async updateDoctorProfile(userId: string, dto: CreateDoctorProfileDto) {
+    const profile = await this.prisma.doctorProfile.findUnique({
+      where: { userId }
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Doctor profile not found');
+    }
+
+    // Check if license number is being changed and if it's already taken
+    if (dto.licenseNumber !== profile.licenseNumber) {
+      const existingLicense = await this.prisma.doctorProfile.findFirst({
+        where: { 
+          licenseNumber: dto.licenseNumber,
+          userId: { not: userId }
+        }
+      });
+
+      if (existingLicense) {
+        throw new ConflictException('This license number is already registered');
+      }
+    }
+
+    const updatedProfile = await this.prisma.doctorProfile.update({
+      where: { userId },
+      data: {
+        licenseNumber: dto.licenseNumber,
+        specialties: dto.specialties,
+        yearsOfExperience: dto.yearsOfExperience,
+        bio: dto.bio,
+        consultationFee: dto.consultationFee,
+        consultationType: dto.consultationType,
+        acceptsReferrals: dto.acceptsReferrals,
+        hospitalAffiliations: dto.hospitalAffiliations || [],
+        bankName: dto.bankName,
+        bankAccountNumber: dto.bankAccountNumber,
+        bankAccountName: dto.bankAccountName,
+        clinicName: dto.clinicName,
+        addressLine1: dto.addressLine1,
+        addressLine2: dto.addressLine2,
+        city: dto.city,
+        district: dto.district,
+        country: dto.country
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    return updatedProfile;
+  }
+
   // Physiotherapist Profile Methods
   async createPhysioProfile(userId: string, dto: CreatePhysioProfileDto) {
     const user = await this.prisma.user.findUnique({
@@ -227,5 +286,78 @@ export class ProfilesService {
     }
 
     return profile;
+  }
+
+  async updatePhysioProfile(userId: string, dto: CreatePhysioProfileDto) {
+    const profile = await this.prisma.physioProfile.findUnique({
+      where: { userId }
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Physiotherapist profile not found');
+    }
+
+    // Check if license number is being changed and if it's already taken
+    if (dto.licenseNo !== profile.licenseNo) {
+      const existingLicense = await this.prisma.physioProfile.findFirst({
+        where: { 
+          licenseNo: dto.licenseNo,
+          userId: { not: userId }
+        }
+      });
+
+      if (existingLicense) {
+        throw new ConflictException('This license number is already registered');
+      }
+    }
+
+    const updatedProfile = await this.prisma.physioProfile.update({
+      where: { userId },
+      data: {
+        licenseNo: dto.licenseNo,
+        specialties: dto.specialties,
+        offersClinicService: dto.offersClinicService,
+        offersHomeService: dto.offersHomeService,
+        clinicAddress: dto.clinicAddress,
+        serviceRadius: dto.serviceRadius,
+        bankName: dto.bankName,
+        accountNumber: dto.accountNumber,
+        accountName: dto.accountName
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    // Update services if provided
+    if (dto.services) {
+      // Delete existing services
+      await this.prisma.service.deleteMany({
+        where: { providerId: userId }
+      });
+
+      // Create new services
+      if (dto.services.length > 0) {
+        await this.prisma.service.createMany({
+          data: dto.services.map(service => ({
+            providerId: userId,
+            name: service.name,
+            description: service.description,
+            duration: service.duration,
+            price: service.price,
+            serviceType: service.serviceType as any
+          }))
+        });
+      }
+    }
+
+    return updatedProfile;
   }
 }

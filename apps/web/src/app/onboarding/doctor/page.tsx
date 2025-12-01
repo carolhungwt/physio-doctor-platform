@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,9 @@ const CONSULTATION_TYPES = [
 export default function DoctorOnboardingPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(true);
     const [error, setError] = useState('');
+    const [editMode, setEditMode] = useState(false);
     const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
     const [customSpecialty, setCustomSpecialty] = useState('');
     const [licenseFile, setLicenseFile] = useState<File | null>(null);
@@ -63,6 +65,63 @@ export default function DoctorOnboardingPage() {
         district: '',
         country: 'Hong Kong'
     });
+
+    // Fetch existing profile on mount
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    router.push('/auth/login');
+                    return;
+                }
+
+                const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/profiles/doctor`,
+                    {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }
+                );
+
+                if (response.ok) {
+                    const profile = await response.json();
+                    setEditMode(true);
+                    
+                    // Pre-fill form with existing data
+                    setFormData({
+                        licenseNumber: profile.licenseNumber || '',
+                        yearsOfExperience: profile.yearsOfExperience?.toString() || '',
+                        bio: profile.bio || '',
+                        consultationFee: profile.consultationFee?.toString() || '',
+                        consultationType: profile.consultationType || 'VIDEO',
+                        acceptsReferrals: profile.acceptsReferrals ?? true,
+                        bankName: profile.bankName || '',
+                        bankAccountNumber: profile.bankAccountNumber || '',
+                        bankAccountName: profile.bankAccountName || '',
+                        clinicName: profile.clinicName || '',
+                        addressLine1: profile.addressLine1 || '',
+                        addressLine2: profile.addressLine2 || '',
+                        city: profile.city || 'Hong Kong',
+                        district: profile.district || '',
+                        country: profile.country || 'Hong Kong'
+                    });
+                    
+                    setSelectedSpecialties(profile.specialties || []);
+                    setHospitalAffiliations(profile.hospitalAffiliations?.length > 0 ? profile.hospitalAffiliations : ['']);
+                } else {
+                    // Profile doesn't exist, this is create mode
+                    setEditMode(false);
+                }
+            } catch (err) {
+                console.error('Error fetching profile:', err);
+                setEditMode(false);
+            } finally {
+                setLoadingProfile(false);
+            }
+        };
+
+        fetchProfile();
+    }, [router]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -161,7 +220,7 @@ export default function DoctorOnboardingPage() {
             // For now, we'll proceed without the file upload
 
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profiles/doctor`, {
-                method: 'POST',
+                method: editMode ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -171,7 +230,7 @@ export default function DoctorOnboardingPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create doctor profile');
+                throw new Error(errorData.message || `Failed to ${editMode ? 'update' : 'create'} doctor profile`);
             }
 
             // Success - redirect to dashboard
@@ -183,14 +242,25 @@ export default function DoctorOnboardingPage() {
         }
     };
 
+    if (loadingProfile) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="container max-w-4xl mx-auto px-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Doctor Profile Setup</CardTitle>
+                        <CardTitle>{editMode ? 'Edit Doctor Profile' : 'Doctor Profile Setup'}</CardTitle>
                         <CardDescription>
-                            Complete your professional profile to start accepting referrals and consultations
+                            {editMode 
+                                ? 'Update your professional information'
+                                : 'Complete your professional profile to start accepting referrals and consultations'
+                            }
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -519,20 +589,22 @@ export default function DoctorOnboardingPage() {
                                 </div>
                             </div>
 
-                            {/* Important Notice */}
-                            <Alert>
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                    <strong>Note:</strong> You can skip this for now, but key features like creating referrals and earning referral fees will be disabled until you complete your profile with:
-                                    <ul className="list-disc list-inside mt-2 ml-2 text-sm">
-                                        <li>Medical license verification</li>
-                                        <li>Specialties and consultation fees</li>
-                                        <li>Banking details</li>
-                                    </ul>
-                                </AlertDescription>
-                            </Alert>
+                            {/* Important Notice - Only show in create mode */}
+                            {!editMode && (
+                                <Alert>
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        <strong>Note:</strong> You can skip this for now, but key features like creating referrals and earning referral fees will be disabled until you complete your profile with:
+                                        <ul className="list-disc list-inside mt-2 ml-2 text-sm">
+                                            <li>Medical license verification</li>
+                                            <li>Specialties and consultation fees</li>
+                                            <li>Banking details</li>
+                                        </ul>
+                                    </AlertDescription>
+                                </Alert>
+                            )}
 
-                            {/* Submit Button */}
+                            {/* Submit Buttons */}
                             <div className="flex gap-4">
                                 <Button
                                     type="button"
@@ -540,7 +612,7 @@ export default function DoctorOnboardingPage() {
                                     onClick={() => router.push('/dashboard')}
                                     disabled={loading}
                                 >
-                                    Skip for Now
+                                    {editMode ? 'Cancel' : 'Skip for Now'}
                                 </Button>
                                 <Button
                                     type="submit"
@@ -550,10 +622,10 @@ export default function DoctorOnboardingPage() {
                                     {loading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Creating Profile...
+                                            {editMode ? 'Saving Changes...' : 'Creating Profile...'}
                                         </>
                                     ) : (
-                                        'Complete Profile'
+                                        editMode ? 'Save Changes' : 'Complete Profile'
                                     )}
                                 </Button>
                             </div>
