@@ -27,6 +27,28 @@ const SPECIALTIES = [
     'Other'
 ];
 
+// 18 Districts in Hong Kong
+const HK_DISTRICTS = [
+    'Central and Western',
+    'Eastern',
+    'Southern',
+    'Wan Chai',
+    'Kowloon City',
+    'Kwun Tong',
+    'Sham Shui Po',
+    'Wong Tai Sin',
+    'Yau Tsim Mong',
+    'Islands',
+    'Kwai Tsing',
+    'North',
+    'Sai Kung',
+    'Sha Tin',
+    'Tai Po',
+    'Tsuen Wan',
+    'Tuen Mun',
+    'Yuen Long'
+];
+
 interface ServiceOffering {
     name: string;
     description: string;
@@ -42,6 +64,7 @@ export default function PhysioOnboardingPage() {
     const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
     const [customSpecialty, setCustomSpecialty] = useState('');
     const [licenseFile, setLicenseFile] = useState<File | null>(null);
+    const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
 
     const [formData, setFormData] = useState({
         licenseNo: '',
@@ -74,6 +97,14 @@ export default function PhysioOnboardingPage() {
             prev.includes(specialty)
                 ? prev.filter(s => s !== specialty)
                 : [...prev, specialty]
+        );
+    };
+
+    const handleDistrictToggle = (district: string) => {
+        setSelectedDistricts(prev =>
+            prev.includes(district)
+                ? prev.filter(d => d !== district)
+                : [...prev, district]
         );
     };
 
@@ -169,6 +200,7 @@ export default function PhysioOnboardingPage() {
                 offersHomeService: formData.offersHomeService,
                 clinicAddress: formData.clinicAddress || null,
                 serviceRadius: formData.serviceRadius ? parseInt(formData.serviceRadius) : null,
+                serviceDistricts: formData.offersHomeService ? selectedDistricts : [],
                 // Banking details
                 bankName: formData.bankName || null,
                 accountNumber: formData.accountNumber || null,
@@ -262,7 +294,7 @@ export default function PhysioOnboardingPage() {
                                         )}
                                     </div>
                                     <p className="text-sm text-gray-500 mt-1">
-                                        Optional: Upload a copy of your license (PDF or image)
+                                        Optional: Upload a copy of your license or proof of qualification (PDF or image)
                                     </p>
                                 </div>
                             </div>
@@ -472,20 +504,67 @@ export default function PhysioOnboardingPage() {
                                     </div>
 
                                     {formData.offersHomeService && (
-                                        <div>
-                                            <Label htmlFor="serviceRadius">Service Radius (km)</Label>
-                                            <Input
-                                                id="serviceRadius"
-                                                name="serviceRadius"
-                                                type="number"
-                                                min="0"
-                                                value={formData.serviceRadius}
-                                                onChange={handleInputChange}
-                                                placeholder="e.g., 10"
-                                            />
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                How far from your clinic are you willing to travel?
-                                            </p>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label htmlFor="serviceRadius">Service Radius (km)</Label>
+                                                <Input
+                                                    id="serviceRadius"
+                                                    name="serviceRadius"
+                                                    type="number"
+                                                    min="0"
+                                                    value={formData.serviceRadius}
+                                                    onChange={handleInputChange}
+                                                    placeholder="e.g., 10"
+                                                />
+                                                <p className="text-sm text-gray-500 mt-1">
+                                                    How far from your clinic are you willing to travel?
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <Label>Service Districts</Label>
+                                                <p className="text-sm text-gray-500 mb-3">
+                                                    Select the Hong Kong districts you cover for home visits
+                                                </p>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto border rounded-lg p-3">
+                                                    {HK_DISTRICTS.map((district) => (
+                                                        <div key={district} className="flex items-center space-x-2">
+                                                            <Checkbox
+                                                                id={`district-${district}`}
+                                                                checked={selectedDistricts.includes(district)}
+                                                                onCheckedChange={() => handleDistrictToggle(district)}
+                                                            />
+                                                            <Label htmlFor={`district-${district}`} className="cursor-pointer text-sm">
+                                                                {district}
+                                                            </Label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {selectedDistricts.length > 0 && (
+                                                    <div className="mt-2">
+                                                        <p className="text-sm text-gray-600 mb-2">
+                                                            Selected: {selectedDistricts.length} district(s)
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {selectedDistricts.map((district) => (
+                                                                <span
+                                                                    key={district}
+                                                                    className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs flex items-center gap-1"
+                                                                >
+                                                                    {district}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleDistrictToggle(district)}
+                                                                        className="hover:text-green-600"
+                                                                    >
+                                                                        <X className="h-3 w-3" />
+                                                                    </button>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

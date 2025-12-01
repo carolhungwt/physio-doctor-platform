@@ -231,6 +231,7 @@ export class ProfilesService {
         offersHomeService: dto.offersHomeService,
         clinicAddress: dto.clinicAddress,
         serviceRadius: dto.serviceRadius,
+        serviceDistricts: dto.serviceDistricts || [],
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         accountName: dto.accountName,
@@ -320,6 +321,7 @@ export class ProfilesService {
         offersHomeService: dto.offersHomeService,
         clinicAddress: dto.clinicAddress,
         serviceRadius: dto.serviceRadius,
+        serviceDistricts: dto.serviceDistricts || [],
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         accountName: dto.accountName

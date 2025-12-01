@@ -117,6 +117,7 @@ model PhysioProfile {
   offersHomeService   Boolean @default(false)
   clinicAddress       String?
   serviceRadius       Int?
+  serviceDistricts    String[] @default([])
 
   bankName      String?
   accountNumber String?

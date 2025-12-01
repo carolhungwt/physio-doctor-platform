@@ -51,6 +51,11 @@ export class CreatePhysioProfileDto {
     @Min(0)
     serviceRadius?: number; // in km for home visits
 
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    serviceDistricts?: string[]; // Hong Kong districts covered for home visits
+
     // Banking details
     @IsOptional()
     @IsString()
