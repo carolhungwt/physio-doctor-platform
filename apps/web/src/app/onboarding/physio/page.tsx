@@ -100,7 +100,7 @@ export default function PhysioOnboardingPage() {
                     return;
                 }
 
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profiles`, {
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profiles/physio`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -114,10 +114,16 @@ export default function PhysioOnboardingPage() {
                         setIsEditMode(true);
                         const profile = data.physioProfile;
                         
+                        // Auto-determine service checkboxes based on existing data
+                        const hasClinicService = profile.offersClinicService || !!profile.clinicAddress;
+                        const hasHomeService = profile.offersHomeService || 
+                                              (profile.serviceDistricts && profile.serviceDistricts.length > 0) ||
+                                              !!profile.serviceRadius;
+                        
                         setFormData({
                             licenseNo: profile.licenseNo || '',
-                            offersClinicService: profile.offersClinicService ?? true,
-                            offersHomeService: profile.offersHomeService ?? false,
+                            offersClinicService: hasClinicService,
+                            offersHomeService: hasHomeService,
                             clinicAddress: profile.clinicAddress || '',
                             serviceRadius: profile.serviceRadius?.toString() || '',
                             bankName: profile.bankName || '',
@@ -276,8 +282,11 @@ export default function PhysioOnboardingPage() {
             // TODO: If file upload is implemented, handle license document upload here
             // For now, we'll proceed without the file upload
 
+            const method = isEditMode ? 'PUT' : 'POST';
+            console.log('Submitting profile with method:', method, 'isEditMode:', isEditMode);
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profiles/physio`, {
-                method: isEditMode ? 'PUT' : 'POST',
+                method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -287,8 +296,12 @@ export default function PhysioOnboardingPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error('Profile submission error:', errorData);
                 throw new Error(errorData.message || `Failed to ${isEditMode ? 'update' : 'create'} physiotherapist profile`);
             }
+
+            const result = await response.json();
+            console.log('Profile saved successfully:', result);
 
             // Success - redirect to dashboard
             router.push('/dashboard');

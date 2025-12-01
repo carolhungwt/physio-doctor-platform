@@ -275,8 +275,7 @@ export class ProfilesService {
             id: true,
             email: true,
             username: true,
-            phone: true,
-            services: true // Include the service offerings
+            phone: true
           }
         }
       }
@@ -286,7 +285,16 @@ export class ProfilesService {
       throw new NotFoundException('Physiotherapist profile not found');
     }
 
-    return profile;
+    // Fetch services separately
+    const services = await this.prisma.service.findMany({
+      where: { providerId: userId },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return {
+      ...profile,
+      services
+    };
   }
 
   async updatePhysioProfile(userId: string, dto: CreatePhysioProfileDto) {
@@ -362,4 +370,5 @@ export class ProfilesService {
 
     return updatedProfile;
   }
+}
 }
